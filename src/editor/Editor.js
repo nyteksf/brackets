@@ -89,6 +89,7 @@ define(function (require, exports, module) {
         LINEWISE_COPY_CUT   = "lineWiseCopyCut",
         SCROLL_PAST_END     = "scrollPastEnd",
         SHOW_CURSOR_SELECT  = "showCursorWhenSelecting",
+        SHOW_FULL_FILEPATH  = "showFullFilePathInTopBar",
         SHOW_LINE_NUMBERS   = "showLineNumbers",
         SMART_INDENT        = "smartIndent",
         SOFT_TABS           = "softTabs",
@@ -99,7 +100,7 @@ define(function (require, exports, module) {
         USE_TAB_CHAR        = "useTabChar",
         WORD_WRAP           = "wordWrap",
         AUTO_HIDE_SEARCH    = "autoHideSearch",
-        INDENT_LINE_COMMENT   = "indentLineComment",
+        INDENT_LINE_COMMENT = "indentLineComment",
         INDENT_LINE_COMMENT = "indentLineComment",
         INPUT_STYLE         = "inputStyle";
 
@@ -209,6 +210,9 @@ define(function (require, exports, module) {
     });
     PreferencesManager.definePreference(SOFT_TABS,          "boolean", true, {
         description: Strings.DESCRIPTION_SOFT_TABS
+    });
+    PreferencesManager.definePreference(SHOW_FULL_FILEPATH, "boolean", false, {
+        description: Strings.DESCRIPTION_SHOW_FULL_FILEPATH
     });
     PreferencesManager.definePreference(SPACE_UNITS,        "number", DEFAULT_SPACE_UNITS, {
         validator: _.partialRight(ValidationUtils.isIntegerInRange, MIN_SPACE_UNITS, MAX_SPACE_UNITS),
