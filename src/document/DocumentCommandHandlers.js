@@ -159,8 +159,11 @@ define(function (require, exports, module) {
             windowTitle         = brackets.config.app_title,
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
             currentlyViewedPath = currentlyViewedFile.fullPath,
-            readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "";
-
+            readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
+            filepathDisplayPref = PreferencesManager.get('showFullPathToFile');
+            // Toggles between display of full or truncated filepath in top bar based on setting preference
+            var pathToFile = filepathDisplayPref === "false" ? _currentTitlePath : currentlyViewedPath;
+        
         if (!brackets.nativeMenus) {
             if (currentlyViewedPath) {
                 _$title.text(_currentTitlePath);
@@ -193,13 +196,13 @@ define(function (require, exports, module) {
                 WorkspaceManager.recomputeLayout();
             }
         }
-
+ 
         var projectRoot = ProjectManager.getProjectRoot();
         if (projectRoot) {
             var projectName = projectRoot.name;
             // Construct shell/browser window title, e.g. "• index.html (myProject) — Brackets"
             if (currentlyViewedPath) {
-                windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, readOnlyString + _currentTitlePath, projectName, brackets.config.app_title);
+                windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, readOnlyString + pathToFile, projectName, brackets.config.app_title);  // -nyteksf
                 // Display dirty dot when there are unsaved changes
                 if (currentDoc && currentDoc.isDirty) {
                     windowTitle = "• " + windowTitle;
