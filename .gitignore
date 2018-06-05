@@ -1,5 +1,9 @@
 Thumbs.db
 
+# ignore more deeply nested node_modules/ folders
+*/node_modules/
+/src/node_modules/
+
 # ignore jenkins build info
 /build.prop
 
