@@ -1,6 +1,7 @@
 Thumbs.db
 
 # ignore more deeply nested node_modules/ folders
+/src/extensions/default/AutoUpdate/node/node_modules
 */node_modules/
 /src/node_modules/
 
