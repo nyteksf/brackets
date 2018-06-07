@@ -89,7 +89,6 @@ define(function (require, exports, module) {
         LINEWISE_COPY_CUT   = "lineWiseCopyCut",
         SCROLL_PAST_END     = "scrollPastEnd",
         SHOW_CURSOR_SELECT  = "showCursorWhenSelecting",
-        SHOW_FULL_FILEPATH  = "showFullFilePathInTopBar",
         SHOW_LINE_NUMBERS   = "showLineNumbers",
         SMART_INDENT        = "smartIndent",
         SOFT_TABS           = "softTabs",

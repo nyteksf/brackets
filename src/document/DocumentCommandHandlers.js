@@ -58,7 +58,12 @@ define(function (require, exports, module) {
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
         _                   = require("thirdparty/lodash");
-
+    
+    /**
+     * Preference to display full file path on top bar
+     */
+    var SHOW_FULL_FILEPATH  = "showFullFilePath"; 
+    
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
      */
@@ -160,9 +165,9 @@ define(function (require, exports, module) {
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
             currentlyViewedPath = currentlyViewedFile.fullPath,
             readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
-            filepathDisplayPref = PreferencesManager.get('showFullPathToFile');
+            filepathDisplayPref = PreferencesManager.get('showFullFilePath');
             // Toggles between display of full or truncated filepath in top bar based on setting preference
-            var pathToFile = filepathDisplayPref === "false" ? _currentTitlePath : currentlyViewedPath;
+            var pathToFile = filepathDisplayPref ? _currentTitlePath : currentlyViewedPath;
         
         if (!brackets.nativeMenus) {
             if (currentlyViewedPath) {
