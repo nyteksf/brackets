@@ -210,9 +210,6 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference(SOFT_TABS,          "boolean", true, {
         description: Strings.DESCRIPTION_SOFT_TABS
     });
-    PreferencesManager.definePreference(SHOW_FULL_FILEPATH, "boolean", false, {
-        description: Strings.DESCRIPTION_SHOW_FULL_FILEPATH
-    });
     PreferencesManager.definePreference(SPACE_UNITS,        "number", DEFAULT_SPACE_UNITS, {
         validator: _.partialRight(ValidationUtils.isIntegerInRange, MIN_SPACE_UNITS, MAX_SPACE_UNITS),
         description: Strings.DESCRIPTION_SPACE_UNITS

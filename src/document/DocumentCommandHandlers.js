@@ -58,12 +58,16 @@ define(function (require, exports, module) {
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
         _                   = require("thirdparty/lodash");
-    
+
     /**
      * Preference to display full file path on top bar
      */
-    var SHOW_FULL_FILEPATH  = "showFullFilePath"; 
-    
+    var SHOW_FULL_FILEPATH  = "showFullFilePath";
+
+    PreferencesManager.definePreference(SHOW_FULL_FILEPATH, "boolean", false, {
++       description: Strings.DESCRIPTION_SHOW_FULL_FILEPATH
++   });
+
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
      */
