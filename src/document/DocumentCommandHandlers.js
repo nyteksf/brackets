@@ -65,8 +65,8 @@ define(function (require, exports, module) {
     var SHOW_FULL_FILEPATH  = "showFullFilePath";
 
     PreferencesManager.definePreference(SHOW_FULL_FILEPATH, "boolean", false, {
-+       description: Strings.DESCRIPTION_SHOW_FULL_FILEPATH
-+   });
+        description: Strings.DESCRIPTION_SHOW_FULL_FILEPATH
+    });
 
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
