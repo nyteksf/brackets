@@ -737,7 +737,7 @@ define({
     "DESCRIPTION_CLOSE_TAGS_WHEN_OPENING"            : "Close when > of opening tag is typed",
     "DESCRIPTION_CLOSE_TAGS_WHEN_CLOSING"            : "Close when / of closing tag is typed",
     "DESCRIPTION_CLOSE_TAGS_INDENT_TAGS"             : "An array of tags that when opened has a blank line",
-    "DESCRIPTION_SHOW_FULL_FILEPATH"                 : "true to display full file path in top bar",
+    "DESCRIPTION_SHOW_FULL_FILEPATH"                 : "true to display full file path on top bar",
     "DESCRIPTION_CODE_FOLDING_ALWAY_USE_INDENT_FOLD" : "true to always generate collapsible section markers when indent level changes",
     "DESCRIPTION_CODE_FOLDING_ENABLED"               : "true to enable code folding",
     "DESCRIPTION_CODE_FOLDING_HIDE_UNTIL_MOUSEOVER"  : "true to make Section-collapsing markers visible only when you move the mouse over the gutter",
