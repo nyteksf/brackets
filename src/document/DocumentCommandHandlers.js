@@ -169,12 +169,11 @@ define(function (require, exports, module) {
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
             currentlyViewedPath = currentlyViewedFile.fullPath,
             readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
-            filepathDisplayPref = PreferencesManager.get('showFullFilePath');
-            // Toggles between display of full or truncated filepath in top bar based on setting preference
-            var pathToFile = filepathDisplayPref ? _currentTitlePath : currentlyViewedPath;
-        
+            filePathDisplayPref = PreferencesManager.get('showFullFilePath'),
+            DocumentTitle 	= filepathDisplayPref ? currentlyViewedPath : _currentTitlePath;
+
         if (!brackets.nativeMenus) {
-            if (currentlyViewedPath) {
+           if (currentlyViewedPath) {
                 _$title.text(_currentTitlePath);
                 _$title.attr("title", currentlyViewedPath);
                 if (currentDoc) {
@@ -205,13 +204,13 @@ define(function (require, exports, module) {
                 WorkspaceManager.recomputeLayout();
             }
         }
- 
+
         var projectRoot = ProjectManager.getProjectRoot();
         if (projectRoot) {
             var projectName = projectRoot.name;
             // Construct shell/browser window title, e.g. "• index.html (myProject) — Brackets"
             if (currentlyViewedPath) {
-                windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, readOnlyString + pathToFile, projectName, brackets.config.app_title);  // -nyteksf
+                windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, readOnlyString + DocumentTitle, projectName, brackets.config.app_title);  // -nyteksf
                 // Display dirty dot when there are unsaved changes
                 if (currentDoc && currentDoc.isDirty) {
                     windowTitle = "• " + windowTitle;

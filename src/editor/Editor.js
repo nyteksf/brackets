@@ -100,7 +100,6 @@ define(function (require, exports, module) {
         WORD_WRAP           = "wordWrap",
         AUTO_HIDE_SEARCH    = "autoHideSearch",
         INDENT_LINE_COMMENT = "indentLineComment",
-        INDENT_LINE_COMMENT = "indentLineComment",
         INPUT_STYLE         = "inputStyle";
 
 
