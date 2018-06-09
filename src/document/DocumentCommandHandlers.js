@@ -169,7 +169,7 @@ define(function (require, exports, module) {
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
             currentlyViewedPath = currentlyViewedFile.fullPath,
             readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
-            filePathDisplayPref = PreferencesManager.get('showFullFilePath'),
+            filePathDisplayPref = PreferencesManager.get(SHOW_FULL_FILEPATH),
             DocumentTitle 	    = filePathDisplayPref ? currentlyViewedPath : _currentTitlePath;
 
         if (!brackets.nativeMenus) {
