@@ -167,10 +167,15 @@ define(function (require, exports, module) {
         var currentDoc          = DocumentManager.getCurrentDocument(),
             windowTitle         = brackets.config.app_title,
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
+<<<<<<< HEAD
             currentlyViewedPath = currentlyViewedFile.fullPath,
             readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
             filePathDisplayPref = PreferencesManager.get('showFullFilePath'),
             DocumentTitle 	= filepathDisplayPref ? currentlyViewedPath : _currentTitlePath;
+=======
+            currentlyViewedPath = currentlyViewedFile && currentlyViewedFile.fullPath,
+            readOnlyString      = (currentlyViewedFile && currentlyViewedFile.readOnly) ? "[Read Only] - " : "";
+>>>>>>> upstream/master
 
         if (!brackets.nativeMenus) {
            if (currentlyViewedPath) {
