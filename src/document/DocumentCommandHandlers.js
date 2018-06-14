@@ -1,4 +1,5 @@
-right (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
+/*
+ * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -169,7 +170,7 @@ define(function (require, exports, module) {
             currentlyViewedPath = currentlyViewedFile.fullPath,
             readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
             filePathDisplayPref = PreferencesManager.get(SHOW_FULL_FILEPATH),
-            DocumentTitle 	    = filePathDisplayPref ? currentlyViewedPath : _currentTitlePath;
+            documentTitle 	    = filePathDisplayPref ? currentlyViewedPath : _currentTitlePath;
 
         if (!brackets.nativeMenus) {
            if (currentlyViewedPath) {
@@ -209,7 +210,7 @@ define(function (require, exports, module) {
             var projectName = projectRoot.name;
             // Construct shell/browser window title, e.g. "• index.html (myProject) — Brackets"
             if (currentlyViewedPath) {
-                windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, readOnlyString + DocumentTitle, projectName, brackets.config.app_title);  // -nyteksf
+                windowTitle = StringUtils.format(WINDOW_TITLE_STRING_DOC, readOnlyString + documentTitle, projectName, brackets.config.app_title);
                 // Display dirty dot when there are unsaved changes
                 if (currentDoc && currentDoc.isDirty) {
                     windowTitle = "• " + windowTitle;
