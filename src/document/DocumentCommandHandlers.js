@@ -1,5 +1,4 @@
-/*
- * Copyright (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
+right (c) 2012 - present Adobe Systems Incorporated. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -167,15 +166,10 @@ define(function (require, exports, module) {
         var currentDoc          = DocumentManager.getCurrentDocument(),
             windowTitle         = brackets.config.app_title,
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
-<<<<<<< HEAD
             currentlyViewedPath = currentlyViewedFile.fullPath,
             readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "",
-            filePathDisplayPref = PreferencesManager.get('showFullFilePath'),
-            DocumentTitle 	= filepathDisplayPref ? currentlyViewedPath : _currentTitlePath;
-=======
-            currentlyViewedPath = currentlyViewedFile && currentlyViewedFile.fullPath,
-            readOnlyString      = (currentlyViewedFile && currentlyViewedFile.readOnly) ? "[Read Only] - " : "";
->>>>>>> upstream/master
+            filePathDisplayPref = PreferencesManager.get(SHOW_FULL_FILEPATH),
+            DocumentTitle 	    = filePathDisplayPref ? currentlyViewedPath : _currentTitlePath;
 
         if (!brackets.nativeMenus) {
            if (currentlyViewedPath) {
