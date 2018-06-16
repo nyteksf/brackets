@@ -1704,14 +1704,14 @@ define(function (require, exports, module) {
      * Debounce function to decrease odds of crash on reload (Issue #10779)
      */
     var timer = null;
-
+    
     function debounce(fn, href, delay) {
         return function () {
             clearTimeout(timer);
             timer = setTimeout(function () {
                 fn(href);
-            }, 500);
-        };
+            }, delay || 500);
+        }
     };
 
     /**
@@ -1747,7 +1747,7 @@ define(function (require, exports, module) {
         // Give Mac native menus extra time to update shortcut highlighting.
         // Prevents the menu highlighting from getting messed up after reload.
         var debouncedBrowserReload = debounce(browserReload, href);
-
+        
         debouncedBrowserReload();
     }
 
@@ -1865,6 +1865,7 @@ define(function (require, exports, module) {
     // Disable ability to reload Brackets for 4 seconds on load to help prevent accidental crashes while app has not completed the prior reload (Issue #10779)
     AppInit.appReady(function () {
         setTimeout(function () {
+            console.log("APP RELOADED");
             CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload);
             CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
        }, 4000);
