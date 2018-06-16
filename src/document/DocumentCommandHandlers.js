@@ -58,7 +58,7 @@ define(function (require, exports, module) {
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
         _                   = require("thirdparty/lodash");
-
+    
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
      */
@@ -158,8 +158,8 @@ define(function (require, exports, module) {
         var currentDoc          = DocumentManager.getCurrentDocument(),
             windowTitle         = brackets.config.app_title,
             currentlyViewedFile = MainViewManager.getCurrentlyViewedFile(MainViewManager.ACTIVE_PANE),
-            currentlyViewedPath = currentlyViewedFile.fullPath,
-            readOnlyString      = currentlyViewedFile.readOnly ? "[Read Only] - " : "";
+            currentlyViewedPath = currentlyViewedFile && currentlyViewedFile.fullPath,
+            readOnlyString      = (currentlyViewedFile && currentlyViewedFile.readOnly) ? "[Read Only] - " : "";
 
         if (!brackets.nativeMenus) {
             if (currentlyViewedPath) {
@@ -1656,7 +1656,7 @@ define(function (require, exports, module) {
 
         return result.promise();
     }
-
+    
     /**
     * Does a full reload of the browser window
     * @param {string} href The url to reload into the window
@@ -1701,6 +1701,20 @@ define(function (require, exports, module) {
     }
 
     /**
+     * Debounce function to decrease odds of crash on reload (Issue #10779)
+     */
+    var timer = null;
+    
+    function debounce(fn, href, delay) {
+        return function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn(href);
+            }, 500);
+        }
+    };
+
+    /**
      * Restarts brackets Handler
      * @param {boolean=} loadWithoutExtensions - true to restart without extensions,
      *                                           otherwise extensions are loadeed as it is durning a typical boot
@@ -1732,9 +1746,9 @@ define(function (require, exports, module) {
 
         // Give Mac native menus extra time to update shortcut highlighting.
         // Prevents the menu highlighting from getting messed up after reload.
-        window.setTimeout(function () {
-            browserReload(href);
-        }, 100);
+        var debouncedBrowserReload = debounce(browserReload, href);
+        
+        debouncedBrowserReload();
     }
 
     /** Reload Without Extensions commnad handler **/
@@ -1847,8 +1861,15 @@ define(function (require, exports, module) {
     CommandManager.registerInternal(Commands.APP_ABORT_QUIT,            handleAbortQuit);
     CommandManager.registerInternal(Commands.APP_BEFORE_MENUPOPUP,      handleBeforeMenuPopup);
     CommandManager.registerInternal(Commands.FILE_CLOSE_WINDOW,         handleFileCloseWindow);
-    CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload);
-    CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
+    
+    // Disable ability to reload Brackets for 4 seconds on load to help prevent accidental crashes while app has not completed the prior reload (Issue #10779)
+    AppInit.appReady(function () {
+        setTimeout(function () {
+            console.log("APP RELOADED");
+            CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload);
+            CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
+       }, 4000);
+    });
 
     // Listen for changes that require updating the editor titlebar
     ProjectManager.on("projectOpen", _updateTitle);
