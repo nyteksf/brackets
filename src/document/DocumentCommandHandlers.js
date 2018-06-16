@@ -1865,7 +1865,6 @@ define(function (require, exports, module) {
     // Disable ability to reload Brackets for 4 seconds on load to help prevent accidental crashes while app has not completed the prior reload (Issue #10779)
     AppInit.appReady(function () {
         setTimeout(function () {
-            console.log("APP RELOADED");
             CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload);
             CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
        }, 4000);
