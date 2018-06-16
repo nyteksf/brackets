@@ -1711,7 +1711,7 @@ define(function (require, exports, module) {
             timer = setTimeout(function () {
                 fn(href);
             }, delay || 500);
-        }
+        };
     };
 
     /**
