@@ -1704,14 +1704,14 @@ define(function (require, exports, module) {
      * Debounce function to decrease odds of crash on reload (Issue #10779)
      */
     var timer = null;
-    
+
     function debounce(fn, href, delay) {
         return function () {
             clearTimeout(timer);
             timer = setTimeout(function () {
                 fn(href);
             }, 500);
-        }
+        };
     };
 
     /**
@@ -1747,7 +1747,7 @@ define(function (require, exports, module) {
         // Give Mac native menus extra time to update shortcut highlighting.
         // Prevents the menu highlighting from getting messed up after reload.
         var debouncedBrowserReload = debounce(browserReload, href);
-        
+
         debouncedBrowserReload();
     }
 
