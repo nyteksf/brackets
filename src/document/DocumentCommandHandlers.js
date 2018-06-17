@@ -1692,7 +1692,7 @@ define(function (require, exports, module) {
 
                 // Defer for a more successful reload - issue #11539
                 setTimeout(function () {
-                    window.location.href = href;
+                    hrefwindow.location.href = href;
                 }, 1000);
             });
         }).fail(function () {
@@ -1705,11 +1705,11 @@ define(function (require, exports, module) {
      */
     var timer = null;
 
-    function debounce(fn, delay, ...args) {
-        return function () {
+    function debounce(fn, delay, arg) {
+	return function () {
             clearTimeout(timer);
             timer = setTimeout(function () {
-                fn(args);
+                fn(arg);
             }, delay || 500);
         };
     };
