@@ -1692,7 +1692,7 @@ define(function (require, exports, module) {
 
                 // Defer for a more successful reload - issue #11539
                 setTimeout(function () {
-                    hrefwindow.location.href = href;
+                    window.location.href = href;
                 }, 1000);
             });
         }).fail(function () {
