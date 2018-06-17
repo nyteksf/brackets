@@ -1701,7 +1701,7 @@ define(function (require, exports, module) {
     }
 
     /**
-     * Debounce function to decrease odds of crash on reload (Issue #10779)
+     * Debounce function decreases odds of crash on reload (Issue #10779)
      */
     var timer = null;
 
