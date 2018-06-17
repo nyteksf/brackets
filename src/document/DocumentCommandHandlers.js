@@ -58,7 +58,7 @@ define(function (require, exports, module) {
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
         _                   = require("thirdparty/lodash");
-    
+
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
      */
@@ -1704,12 +1704,12 @@ define(function (require, exports, module) {
      * Debounce function to decrease odds of crash on reload (Issue #10779)
      */
     var timer = null;
-    
-    function debounce(fn, href, delay) {
+
+    function debounce(fn, delay, ...args) {
         return function () {
             clearTimeout(timer);
             timer = setTimeout(function () {
-                fn(href);
+                fn(args);
             }, delay || 500);
         };
     };
@@ -1746,8 +1746,8 @@ define(function (require, exports, module) {
 
         // Give Mac native menus extra time to update shortcut highlighting.
         // Prevents the menu highlighting from getting messed up after reload.
-        var debouncedBrowserReload = debounce(browserReload, href);
-        
+        var debouncedBrowserReload = debounce(browserReload, null, href);
+
         debouncedBrowserReload();
     }
 
@@ -1865,9 +1865,7 @@ define(function (require, exports, module) {
     // Disable ability to reload Brackets for 4 seconds on load to help prevent accidental crashes while app has not completed the prior reload (Issue #10779)
     AppInit.appReady(function () {
         setTimeout(function () {
-            console.log("APP RELOADED");
-            CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload);
-            CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
+            CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload); CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
        }, 4000);
     });
 
