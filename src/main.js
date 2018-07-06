@@ -65,12 +65,14 @@ if (window.location.search.indexOf("testEnvironment") > -1) {
     });
 }
 
+
 define(function (require) {
     "use strict";
 
     // Load compatibility shims--these need to load early, be careful moving this
     require(["utils/Compatibility"], function () {
         // Load the brackets module. This is a self-running module that loads and runs the entire application.
-        require(["brackets"]);
-    });
+        require(["brackets"]);    
+    });    
 });
+

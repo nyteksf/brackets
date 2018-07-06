@@ -163,7 +163,6 @@ define(function (require, exports, module) {
     // read URL params
     params.parse();
 
-
     /**
      * Setup test object
      */
@@ -479,4 +478,5 @@ define(function (require, exports, module) {
         AppInit._dispatchReady(AppInit.HTML_READY);
         $(window.document).ready(_onReady);
     });
+
 });

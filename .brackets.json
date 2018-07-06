@@ -10,15 +10,12 @@
         "es5": true,
         "predef": [
             "brackets",
-
             "require",
             "define",
             "$",
-
             "window",
             "setTimeout",
             "clearTimeout",
-
             "ArrayBuffer",
             "XMLHttpRequest",
             "Uint32Array",
@@ -28,7 +25,10 @@
     "defaultExtension": "js",
     "language": {
         "javascript": {
-            "linting.prefer": ["ESLint", "JSLint"],
+            "linting.prefer": [
+                "ESLint",
+                "JSLint"
+            ],
             "linting.usePreferredOnly": true
         }
     },
@@ -42,6 +42,6 @@
             "linting.enabled": false
         }
     },
-    "spaceUnits": 4,
+    "spaceUnits": 2,
     "useTabChar": false
 }
