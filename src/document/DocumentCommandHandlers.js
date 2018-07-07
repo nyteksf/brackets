@@ -37,6 +37,9 @@ define(function (require, exports, module) {
         MainViewManager     = require("view/MainViewManager"),
         Editor              = require("editor/Editor"),
         EditorManager       = require("editor/EditorManager"),
+        Db                  = require("editor/Editor").Db,
+        storeHistoryDb      = require("editor/Editor").storeHistoryDb,
+        loadHistoryDb       = require("editor/Editor").loadHistoryDb,
         FileSystem          = require("filesystem/FileSystem"),
         FileSystemError     = require("filesystem/FileSystemError"),
         FileUtils           = require("file/FileUtils"),
@@ -62,7 +65,7 @@ define(function (require, exports, module) {
         CompressionUtils    = require("thirdparty/rawinflate"),
         CompressionUtils    = require("thirdparty/rawdeflate"),
         He                  = require("thirdparty/he");
-
+  
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
      */
@@ -508,8 +511,8 @@ define(function (require, exports, module) {
                                                                         fileInfo.column - 1,
                                                                         true);
                     }
-                    result.resolve(file);
-                    
+                  
+                    result.resolve(file);  
                 } else {
                     if (!refsToLoad) {  // Checks if doc had been saved
                         // Fall back on file to get last cursorPos if changes were saved
@@ -574,9 +577,11 @@ define(function (require, exports, module) {
                 //  then we need to resolve that to a document.
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
+                
+                // REPLACE REFSTOLOAD LOCALSTORAGE WITH SQL FETCH
                 var pathToFile = file.fullPath,
                     doc = DocumentManager.getOpenDocumentForPath(pathToFile),
-                    refsToLoad = window.localStorage.getItem("sessionId__" + pathToFile),
+                    refsToLoad, //= window.localStorage.getItem("sessionId__" + pathToFile),
 		            parsedRefsToLoad,
                     parsedHistory,
                     docTxtToInflate,
@@ -586,6 +591,10 @@ define(function (require, exports, module) {
                     scrollPos;
 
                 if (hotClose) {
+                    // Retrieve DB info and load document into Editor
+                    loadHistoryDb(pathToFile);
+                    
+                    // ToDo NYTEKSF - REMOVE BELOW "(refsToLoad) ...", and put in explicit download from DB for this comparison instead
                     if (refsToLoad) {
                         parsedRefsToLoad   = JSON.parse(refsToLoad),
                         parsedHistory      = JSON.parse(He.decode(RawDeflate.inflate(parsedRefsToLoad[2].toString()))),
@@ -598,15 +607,16 @@ define(function (require, exports, module) {
                         // Load record of prior text into master editor
                         doc._masterEditor._codeMirror.setValue(docTxtDecodedChars);
                     
-                        // Verify that records exist for current document
-                        // Open file is unsynced and sets cursorPos back to 'X=0, Y=0'
-                        // Therefore, handle case where brackets crashes again before next sync can occur
+                        // Open file starts out unsynced and cursorPos back to 'X=0, Y=0',
+                        // So we carry over cursorPos from last known position and store again
+                        storeHistoryDb(parsedRefsToLoad[0], parsedRefsToLoad[1], parsedRefsToLoad[2], parsedRefsToLoad[3]);
+                      
                         window.localStorage.setItem("sessionId__" + pathToFile, refsToLoad);
                     }
                     
                     result.resolve(doc); 
                 } else {
-                    
+                    console.log("DB FETCH FAILED");  
                     result.resolve(doc);
                 }
             
@@ -1138,6 +1148,27 @@ define(function (require, exports, module) {
         // If pref set to true, attempt reload of prior undo/redo history
         if (hotClose) {
             var curFilePath = doc.file._path;
+       
+            Db.transaction(function(tx) {
+              tx.executeSql('DELETE FROM unsaved_doc_changes WHERE sessionId=?', [curFilePath],  function(tx, results) {
+                console.log("success - 1 unsaved_doc_changes row deleted"); 
+              }, function(tx, error) {
+                console.log("Could not delete row from table 'unsaved_doc_changes'");
+              });
+
+              tx.executeSql('DELETE FROM undo_redo_history WHERE sessionId=?', [curFilePath],  function(tx, results) {
+                console.log("success - 1 undo_redo_history row deleted"); 
+              }, function(tx, error) {
+                console.log("Could not delete row from table 'unsaved_doc_changes'");
+              });
+
+              tx.executeSql('DELETE FROM cursorpos_coords WHERE sessionId=?', [curFilePath],  function(tx, results) {
+                console.log("success - 1 cursorpos_coords row deleted"); 
+              }, function(tx, error) {
+                console.log("Could not delete row from table 'cursorpos_coords'");
+              });
+            });
+
             window.localStorage.removeItem("sessionId__" + curFilePath);
         }
 
@@ -1610,6 +1641,28 @@ define(function (require, exports, module) {
         if (hotClose) {
             // Removes history item from localStorage before rename
             var fileName = MainViewManager.getCurrentlyViewedFile();
+          
+            Db.transaction(function(tx) {
+              tx.executeSql('DELETE FROM unsaved_doc_changes WHERE sessionId=?', [fileName._path],  function(tx, results) {
+                console.log("success - 1 unsaved_doc_changes row deleted"); 
+              }, function(tx, error) {
+                console.log("Could not delete row from table 'unsaved_doc_changes'");
+              });
+
+              tx.executeSql('DELETE FROM undo_redo_history WHERE sessionId=?', [fileName._path],  function(tx, results) {
+                console.log("success - 1 undo_redo_history row deleted"); 
+              }, function(tx, error) {
+                console.log("Could not delete row from table 'unsaved_doc_changes'");
+              });
+
+              tx.executeSql('DELETE FROM cursorpos_coords WHERE sessionId=?', [fileName._path],
+                function(tx, results) {
+                  console.log("success - 1 cursorpos_coords row deleted"); 
+              }, function(tx, error) {
+                console.log("Could not delete row from table 'cursorpos_coords'");
+              });
+            });
+          
             window.localStorage.removeItem("sessionId__" + fileName._path);
         }
         
@@ -1739,12 +1792,34 @@ define(function (require, exports, module) {
             ]
         )
             .done(function (id) {
-                if (id === Dialogs.DIALOG_BTN_OK) {
-                    // Delete undo/redo history from localStorage if pref set to persist history
-                    if (hotClose) {
-                        window.localStorage.removeItem("sessionId__" + thisFilePath);
-                    }
-                    ProjectManager.deleteItem(entry);
+              if (id === Dialogs.DIALOG_BTN_OK) {
+                // Delete undo/redo history from localStorage if pref set to persist history
+                if (hotClose) {
+                    Db.transaction(function(tx) {
+                      tx.executeSql('DELETE FROM unsaved_doc_changes WHERE sessionId=?', [thisFilePath],    function(tx, results) {
+                        console.log("success - 1 unsaved_doc_changes row deleted"); 
+                      }, function(tx, error) {
+                        console.log("Could not delete row from table 'unsaved_doc_changes'");
+                      });
+
+                      tx.executeSql('DELETE FROM undo_redo_history WHERE sessionId=?', [thisFilePath],     
+                        function(tx, results) {
+                          console.log("success - 1 undo_redo_history row deleted"); 
+                      }, function(tx, error) {
+                        console.log("Could not delete row from table 'unsaved_doc_changes'");
+                      });
+
+                      tx.executeSql('DELETE FROM cursorpos_coords WHERE sessionId=?', [thisFilePath],  
+                        function(tx, results) {
+                          console.log("success - 1 cursorpos_coords row deleted"); 
+                      }, function(tx, error) {
+                        console.log("Could not delete row from table 'cursorpos_coords'");
+                      });
+                    });
+                  
+                    window.localStorage.removeItem("sessionId__" + thisFilePath);
+                  }
+                  ProjectManager.deleteItem(entry);
                 }
             });
     }

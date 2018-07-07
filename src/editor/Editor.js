@@ -323,14 +323,14 @@ define(function(require, exports, module) {
   /*
    * Load Web SQL/SQLite3 Based Persistence of Unsaved Changes
    */
-  var db = openDatabase('change_history_db', '1.0', 'Feature: Hot Close', 1024 * 1024 * 100);
+  var Db = openDatabase('change_history_db', '1.0', 'Feature: Hot Close', 1024 * 1024 * 100);
   
   // Attempt creating default DB tables if not existing in db already
-  if (!db) {
+  if (!Db) {
     console.log("Database error! Database 'change_history_db' has not been loaded!");
   } else { 
     
-    db.transaction(function(tx) {
+    Db.transaction(function(tx) {
       tx.executeSql('CREATE TABLE IF NOT EXISTS unsaved_doc_changes (id INTEGER PRIMARY KEY, sessionId UNIQUE, str__DocTxt)', [],
         function(tx, results) {
           console.log("Successfully created table 'unsaved_doc_changes'")
@@ -363,7 +363,7 @@ define(function(require, exports, module) {
   
   // Allow user ability to clear DB of accumulated change history
   function wipeDb() {
-    db.transaction(function(tx) {
+    Db.transaction(function(tx) {
       tx.executeSql("DROP TABLE unsaved_doc_changes", [],
         function(tx, results) {
           console.log("Successfully dropped 'unsaved_doc_changes'")
@@ -395,11 +395,11 @@ define(function(require, exports, module) {
 
   // This is the 'Save to DB' function
   var storeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
-    if (!db) {
+    if (!Db) {
       console.log("Database error! No database loaded!");
     } else { 
       try {
-        db.transaction(function(tx) {
+        Db.transaction(function(tx) {
           tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES (?, ?)', [fullFilePath, currentTxtDeflated],
           function(tx, results) {
             console.log("Successfully inserted into 'unsaved_doc_changes'")
@@ -455,48 +455,38 @@ define(function(require, exports, module) {
   };
 
   // This is the 'Load From DB' function
-  var fetchHistoryDb = function(fullFilePath) {
-    if (!db) {
+  var loadHistoryDb = function(fullFilePath) {
+    if (!Db) {
       console.log("Database error! Did not load query result!")
     } else {
       try {
+        console.log("loadHistoryDb()");
         
-        console.log("1");
-        
-        
-
-        db.transaction(function(tx) {
-          var resultsArray = [];
-          
+        return Db.transaction(function(tx) {
           tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath], function(tx, results) {
-            console.log("success - unsaved_doc_changes"); 
-
-            //console.log(results.rows[0]);
-            resultsArray.push(results.rows[0]);
+            console.log("success - unsaved_doc_changes fetched"); 
+            console.log(results.rows["0"].str__DocTxt);
+            // SET DOCTXT VALUE OF EDITOR HERE W/ SYNCED DB VALUE
           }, function(tx, error) {
             console.log("Could not dump table 'unsaved_doc_changes'");
           });
           
           tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath], function(tx, results) { 
-            console.log("Success - undo_redo_history");
-
-            //console.log(results.rows[0]);  
-            resultsArray.push(results.rows[0]);
+            console.log("Success - undo_redo_history fetched"); 
+            console.log(results.rows["0"].str__DocHistory);
+            // SET HISTORY VALUE HERE WITH SYNCED DB VALUE
           }, function(tx, error) {
             console.log("Could not dump table 'undo_redo_history'");
           });
 
           tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath], function(tx, results) {
-            console.log("Success - cursorpos_coords");
-            
-            //console.log(results.rows[0]);
-            resultsArray.push(results.rows[0]);
+            console.log("Success - cursorpos_coords fetched");
+            console.log(results.rows["0"].int__CursorPos);
+            console.log(results.rows["0"].int__ScrollPos);
+            // SET CURSORPOS HERE WITH SYNCED DB VALUE
           }, function(tx, error) {
-            console.log("Could not dump table 'cursorpos_coords'"); 
-          }); 
-
-          console.log(resultsArray);
-          return resultsArray;
+            console.log("Could not dump table 'cursorpos_coords'");
+          });           
         }); 
       } catch (err) {
         console.log("Database Error! ", err);
@@ -1165,7 +1155,8 @@ define(function(require, exports, module) {
     try {
       
       if (window.localStorage.getItem("sessionId__" + fullFilePath)) {
-        fetchHistoryDb(fullFilePath); // TESTING <-
+        var output = loadHistoryDb(fullFilePath); // TESTING <-
+        console.log(output);
         // If the current doc has prior history attached, then opening/reloading 
         // without below check would cause cursorPos to shift incorrectly to 
         // {'line': 0, 'ch': 0...}
@@ -1270,7 +1261,7 @@ define(function(require, exports, module) {
           )
           .done(function(id) {
             if (id === Dialogs.DIALOG_BTN_OK) {
-              // "Overwrite localStorage" case:
+              // "Overwrite" case:
               var thisFilePath = file.file._path,
                   thisCurTxt = file._masterEditor._codeMirror.getValue(),
                   thisCurHistory = RawDeflate.deflate(He.encode(JSON.stringify(file._masterEditor._codeMirror.getHistory()))),
@@ -1281,7 +1272,7 @@ define(function(require, exports, module) {
               
               window.localStorage.clear();
               
-              // storeHistoryDb(thisCursorPos, thisScrollPos, thisCurHistory, thisCurTxt, thisFilePath);
+              storeHistoryDb(thisCursorPos, thisScrollPos, thisCurHistory, thisCurTxt, thisFilePath);
               
               window.localStorage.setItem("sessionId__" + file_Path, codeMirrorRefsToJSON);
 
@@ -3331,5 +3322,7 @@ define(function(require, exports, module) {
   exports.Editor = Editor;
   exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
   exports.BOUNDARY_IGNORE_TOP = BOUNDARY_IGNORE_TOP;
-  exports.db = db;
+  exports.Db = Db;
+  exports.loadHistoryDb = loadHistoryDb;
+  exports.storeHistoryDb = storeHistoryDb;
 });
