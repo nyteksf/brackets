@@ -434,9 +434,9 @@ define(function(require, exports, module) {
     };
 
   };
-/*
+
   // This is the 'Load From DB' function
-  var fetchHistoryDb = function(newCursorPos, newScrollPos, curTxtObj, currentTxtDeflated, fullFilePath) {
+  var fetchHistoryDb = function(fullFilePath) {
     if (!db) {
       console.log("Database error! Did not load query result!")
     } else {
@@ -444,30 +444,35 @@ define(function(require, exports, module) {
         var resultsArray = [];
 
         db.transaction(function(tx) {
-          tx.executeSql('SELECT * FROM unsaved_doc_changes', [], function(tx, results) {
+          tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath], function(tx, results) {
             console.log("success - unsaved_doc_changes");
 
+            console.log(results.rows);
+            
             resultsArray.push(results.rows[0].str__DocTxt);
           }, function(tx, error) {
             console.log("Could not dump table 'unsaved_doc_changes'");
           });
 
-          tx.executeSql('SELECT * FROM undo_redo_history', [], function(tx, results) {
+          tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath], function(tx, results) {
             console.log("Success - undo_redo_history");
-
+console.log(results.rows);
+            
             resultsArray.push(results.rows[0].str__DocHistory);
           }, function(tx, error) {
             console.log("Could not dump table 'undo_redo_history'");
           });
 
-          tx.executeSql('SELECT * FROM cursorpos_coords', [], function(tx, results) {
+          tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath], function(tx, results) {
             console.log("Success - cursorpos_coords");
-
+console.log(results.rows);           
+            
             resultsArray.push(results.rows[0].cursorPos);
           }, function(tx, error) {
             console.log("Could not dump table 'cursorpos_coords'");
-          });
+          }); 
 
+          console.log(resultsArray);
           return resultsArray;
         });
       } catch (err) {
@@ -475,7 +480,6 @@ define(function(require, exports, module) {
       }
     }
   }
-*/
 
   /**
    * Creates a new CodeMirror editor instance bound to the given Document. The Document need not have
@@ -1136,7 +1140,9 @@ define(function(require, exports, module) {
     
     // Ensure if localStorage full, it's clear before proceeding to write above changes
     try {
+      
       if (window.localStorage.getItem("sessionId__" + fullFilePath)) {
+        fetchHistoryDb(fullFilePath); // TESTING <-
         // If the current doc has prior history attached, then opening/reloading 
         // without below check would cause cursorPos to shift incorrectly to 
         // {'line': 0, 'ch': 0...}
@@ -3295,7 +3301,7 @@ define(function(require, exports, module) {
       });
     });
   });
-    //wipeDb();
+  
   // Define public API
   exports.Editor = Editor;
   exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
