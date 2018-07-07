@@ -355,10 +355,94 @@ define(function(require, exports, module) {
         }
       );
     })
+  } 
+
+  // This is the 'Save to DB' function
+  var storeHistoryDb = function(cursorPos, scrollPos, curTxtObj, currentTxtDeflated, fullFilePath) {
+  if (!db) {
+    console.log("NO DB LOADED")
+      console.log("Database error!");
+    } else { 
+      try {
+        console.log("DB");
+        console.log(cursorPos, scrollPos, curTxtObj, currentTxtDeflated, fullFilePath)
+        console.log("DB");
+/*
+        db.transaction(function(tx) {
+          tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES (?, ?)', [fullFilePath, currentTxtDeflated],
+          function(tx, results) {
+            console.log("Successfully inserted into 'unsaved_doc_changes'")
+          },
+          function(tx, error) {
+            console.log("Could not insert into 'unsaved_doc_changes'")
+          });
+        });
+
+        tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curTxtObj],
+          function(tx, results) {
+            console.log("Successfully inserted into 'undo_redo_history'")
+          },
+          function(tx, error) {
+            console.log("Could not insert into to 'undo_redo_history'")
+          }
+        );
+
+        console.log(newCursorPos);
+
+        tx.executeSql('INSERT INTO cursorpos_coords (sessionId, cursorPos) VALUES (?, ?)', [fullFilePath, newCursorPos], function(tx, results) {
+            console.log("Successfully inserted into 'cursorpos_coords'")
+          }, function(tx, error) {
+            console.log("Could not insert into to 'cursorpos_coords'")
+          }
+        );
+*/
+      } catch (err) {
+        console.log("Database error! ", err)
+      }
+    };
+  };
+/*
+  // This is the 'Load From DB' function
+  var fetchHistoryDb = function(newCursorPos, newScrollPos, curTxtObj, currentTxtDeflated, fullFilePath) {
+    if (!db) {
+      console.log("Database error! Did not load query result!")
+    } else {
+      try {
+        var resultsArray = [];
+
+        db.transaction(function(tx) {
+          tx.executeSql('SELECT * FROM unsaved_doc_changes', [], function(tx, results) {
+            console.log("success - unsaved_doc_changes");
+
+            resultsArray.push(results.rows[0].str__DocTxt);
+          }, function(tx, error) {
+            console.log("Could not dump table 'unsaved_doc_changes'");
+          });
+
+          tx.executeSql('SELECT * FROM undo_redo_history', [], function(tx, results) {
+            console.log("Success - undo_redo_history");
+
+            resultsArray.push(results.rows[0].str__DocHistory);
+          }, function(tx, error) {
+            console.log("Could not dump table 'undo_redo_history'");
+          });
+
+          tx.executeSql('SELECT * FROM cursorpos_coords', [], function(tx, results) {
+            console.log("Success - cursorpos_coords");
+
+            resultsArray.push(results.rows[0].cursorPos);
+          }, function(tx, error) {
+            console.log("Could not dump table 'cursorpos_coords'");
+          });
+
+          return resultsArray;
+        });
+      } catch (err) {
+        console.log("Database Error! ", err);
+      }
+    }
   }
-
-  // wipeDb();
-
+*/
   // Attempt creating default tables if not exist already in db
   if (!db) {
     console.log("Database error! Database 'change_history_db' has not been loaded!");
@@ -370,7 +454,7 @@ define(function(require, exports, module) {
         },
         function(tx, error) {
           console.log("Could not create table 'unsaved_doc_changes'")
-        });
+        }); 
 
       tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId, cursorPos_Line, cursorPos_Ch, cursorPos_Sticky)', [],
         function(tx, results) {
@@ -1024,6 +1108,7 @@ define(function(require, exports, module) {
    * Stashes a copy of the current document text, history, etc. in localStorage
    */
   function _captureUnsavedDocChanges(that) {
+    // Extract latest change history
     var curRawTxtObj = He.encode(JSON.stringify(that._codeMirror.getHistory())),
       currentTextObj = RawDeflate.deflate(curRawTxtObj),
       currentTxt = that._codeMirror.getValue(),
@@ -1038,14 +1123,15 @@ define(function(require, exports, module) {
         [currentTextObj],
         [curTxtDeflated],
         [fullPathToFile]
-      ],
+      ],  
       codeMirrorRefsToJSON = JSON.stringify(codeMirrorRefs),
       fullFilePath = that.document.file._path,
       unsavedDocs = [],
       result = new $.Deferred(),
       promise = result.promise();
-
-    // Ensure if localStorage full, it's clear before proceeding to write changes
+ 
+    
+    // Ensure if localStorage full, it's clear before proceeding to write above changes
     try {
       if (window.localStorage.getItem("sessionId__" + fullFilePath)) {
         // If the current doc has prior history attached, then opening/reloading 
@@ -1060,9 +1146,9 @@ define(function(require, exports, module) {
         if (currentTxt === priorDocTxt) {
           priorDocTxt = null;
 
-          var lastCursorPosX = parsedSessionRefs[0][0],
-            lastCursorPosY = parsedSessionRefs[0][1],
-            lastChangeHistory = JSON.parse(He.decode(RawDeflate.inflate(parsedSessionRefs[2].toString())));
+          var lastCursorPosX    = parsedSessionRefs[0][0],
+              lastCursorPosY    = parsedSessionRefs[0][1],
+              lastChangeHistory = JSON.parse(He.decode(RawDeflate.inflate(parsedSessionRefs[2].toString())));
 
           // Reload document change history file
           that._codeMirror.setHistory(lastChangeHistory);
@@ -1080,100 +1166,40 @@ define(function(require, exports, module) {
             currentTxtDeflated = RawDeflate.deflate(docSpecialCharsEncoded),
             codeMirrorRefs = [
               [newCursorPos.line, newCursorPos.ch, newCursorPos.sticky],
-              [newScrollPos],
+              [newScrollPos], 
               [curTxtObj],
               [currentTxtDeflated],
               [fullFilePath]
             ],
             updatedRefsToJSON = JSON.stringify(codeMirrorRefs);
-        /*
-          db.transaction(function(tx) {
-            tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES ("sessionId__" + ?, ?)', [fullFilePath, updatedRefsToJSON],
-            function(tx, results) {
-              console.log("Successfully inserted into 'unsaved_doc_changes'")
-            },
-            function(tx, error) {
-              console.log("Could not insert into 'unsaved_doc_changes'")
-            });
-          });
-          */
-          // INSERT BLOCK //
-        /* 
-	 if (!db) {
-            console.log("Database error!");
-          } else {
-            db.transaction(function(tx) {
-            tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES ("sessionId__/home/inf/.config/Brackets/extensions/user/persist-history-db/main.js", "This is some sample docTxt right here")', [],
-              function(tx, results) {
-                console.log("Successfully inserted into 'unsaved_doc_changes'")
-              },
-              function(tx, error) {
-                console.log("Could not insert into 'unsaved_doc_changes'")
-              }
-            );
-
-            tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES ("sessionId__/home/inf/.config/Brackets/extensions/user/persist-history-db/main.js", "{changes, changes, changes}")', [],
-              function(tx, results) {
-                console.log("Successfully inserted into 'undo_redo_history'")
-              },
-              function(tx, error) {
-                console.log("Could not insert into to 'undo_redo_history'")
-              }
-            );
-
-            tx.executeSql('INSERT INTO cursorpos_coords (sessionId, cursorPos_Line, cursorPos_Ch, cursorPos_Sticky) VALUES ("sessionId__/home/inf/.config/Brackets/extensions/user/persist-history-db/main.js", 145, 15, "null")', [],
-              function(tx, results) {
-                console.log("Successfully inserted into 'cursorpos_coords'")
-              },
-              function(tx, error) {
-                console.log("Could not insert into to 'cursorpos_coords'")
-              }
-            );
-          });
-
-          db.transaction(function(tx) {
-            tx.executeSql('SELECT * FROM unsaved_doc_changes', [], function(tx, results) {
-              console.log("success - unsaved_doc_changes");
-
-              console.log(results.rows[0].str__DocTxt);
-            }, function(tx, error) {
-              console.log("Could not dump table 'unsaved_doc_changes'");
-            });
-
-            tx.executeSql('SELECT * FROM undo_redo_history', [], function(tx, results) {
-              console.log("Success - undo_redo_history");
-
-              console.log(results.rows[0].str__DocHistory);
-            }, function(tx, error) {
-              console.log("Could not dump table 'undo_redo_history'");
-            });
-
-            tx.executeSql('SELECT * FROM cursorpos_coords', [], function(tx, results) {
-              console.log("Success - cursorpos_coords");
-
-              console.log(results.rows[0].cursorPos_Line, results.rows[0].cursorPos_Ch, results.rows[0].cursorPos_Sticky);
-            }, function(tx, error) {
-              console.log("Could not dump table 'cursorpos_coords'");
-            });
-          });  
-      */
+            console.log("A");
+            storeHistoryDb(JSON.stringify(newCursorPos), JSON.stringify(newScrollPos), curTxtObj, currentTxtDeflated, fullFilePath); 
+           
           window.localStorage.setItem("sessionId__" + fullFilePath, updatedRefsToJSON);
-        } else {
-          // Change in text detected; recording to localStorage
+        } else { 
+          // Change(s) in doc text detected; recording to localStorage
+          console.log("B");
+          storeHistoryDb(JSON.stringify(cursorPos), JSON.stringify(scrollPos), currentTextObj, curTxtDeflated, fullPathToFile);
+          
           window.localStorage.setItem("sessionId__" + fullFilePath, codeMirrorRefsToJSON);
-        }
-      } else {
-        // No prior history for current doc found; recording change as per normal
+        } 
+      } else { 
+        // No prior history for current doc found; recording new change(s) as per normal
+        console.log("C"); 
+        storeHistoryDb(JSON.stringify(cursorPos), JSON.stringify(scrollPos), currentTextObj, curTxtDeflated, fullPathToFile);
+        
         window.localStorage.setItem("sessionId__" + fullFilePath, codeMirrorRefsToJSON);
-      }
+      } 
 
       result.resolve(that);
     } catch (err) {
+      
+      console.log(err);
 
       var listOfFiles = MainViewManager.getAllOpenFiles();
 
-      if (listOfFiles.length > 0) {
-        listOfFiles.forEach(function(file) {
+      if (listOfFiles.length > 0) { 
+        listOfFiles.forEach(function(file) { 
           var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
           if (doc && doc.isDirty) {
             unsavedDocs.push(doc);
@@ -1188,6 +1214,7 @@ define(function(require, exports, module) {
         // Single dirty file detected
         var file_Path = unsavedDocs[0].file._path,
           file_Name = unsavedDocs[0].file._name,
+          file = unsavedDocs[0];
           msg = StringUtils.format(
             Strings.CANNOT_PERSIST_CHANGES_MESSAGE,
             StringUtils.breakableUrl(file_Name)
@@ -1212,8 +1239,18 @@ define(function(require, exports, module) {
           .done(function(id) {
             if (id === Dialogs.DIALOG_BTN_OK) {
               // "Overwrite localStorage" case:
+              var thisFilePath = file.file._path,
+                  thisCurTxt = file._masterEditor._codeMirror.getValue(),
+                  thisCurHistory = RawDeflate.deflate(He.encode(JSON.stringify(file._masterEditor._codeMirror.getHistory()))),
+                  thisCursorPos = file._masterEditor.getCursorPos(),
+                  thisScrollPos = file._masterEditor.getScrollPos(),
+                  docTxtSpecCharsEncoded = He.encode(thisCurrentTxtObj),
+                  deflatedCurrentTxt = RawDeflate.deflate(docTxtSpecialCharsEncoded);
+              
               window.localStorage.clear();
-
+              
+              // storeHistoryDb(thisCursorPos, thisScrollPos, thisCurHistory, thisCurTxt, thisFilePath);
+              
               window.localStorage.setItem("sessionId__" + file_Path, codeMirrorRefsToJSON);
 
               result.resolve(that);
@@ -1245,11 +1282,11 @@ define(function(require, exports, module) {
             if (id === Dialogs.DIALOG_BTN_OK) {
               var fileRefsToJSON = unsavedDocs.map(function(file) {
                 var thisFileFullPath = file.file._path,
-                  thisCurrentTxtObj = file._masterEditor._codeMirror.getValue(),
+                  thisCurrentTxt = file._masterEditor._codeMirror.getValue(),
                   thisCurrentHistory = RawDeflate.deflate(He.encode(JSON.stringify(file._masterEditor._codeMirror.getHistory()))),
                   thisCursorPos = file._masterEditor.getCursorPos(),
                   thisScrollPos = file._masterEditor.getScrollPos(),
-                  docTxtSpecialCharsEncoded = He.encode(thisCurrentTxtObj),
+                  docTxtSpecialCharsEncoded = He.encode(thisCurrentTxt),
                   deflatedCurTxt = RawDeflate.deflate(docTxtSpecialCharsEncoded);
 
                 var refs = [
@@ -1269,7 +1306,9 @@ define(function(require, exports, module) {
               fileRefsToJSON.forEach(function(historyFile) {
                 var currentFilePath = historyFile._path,
                   historyFile = RawDeflate.deflate(He.encode(JSON.stringify(historyFile)));
-
+                
+                //storeHistoryDb(thisCursorPos, thisScrollPos, thisCurrentHistory, deflatedCurTxt, thisFullFilePath);
+                
                 window.localStorage.setItem("sessionId__" + currentFilePath, historyFile);
               });
 
@@ -2555,7 +2594,7 @@ define(function(require, exports, module) {
       this.setScrollPos(viewState.scrollPos.x, viewState.scrollPos.y);
     }
   };
-
+ 
   /**
    * Re-renders the editor UI
    * @param {boolean=} handleResize true if this is in response to resizing the editor. Default false.
@@ -3253,7 +3292,7 @@ define(function(require, exports, module) {
       });
     });
   });
-    wipeDb();
+    //wipeDb();
   // Define public API
   exports.Editor = Editor;
   exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
