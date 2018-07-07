@@ -318,14 +318,50 @@ define(function(require, exports, module) {
    * that affect all editors, e.g. tabbing or color scheme settings.
    * @type {Array.<Editor>}
    */
-  var _instances = [];
+  var _instances = []; 
 
   /*
    * Load Web SQL/SQLite3 Based Persistence of Unsaved Changes
    */
   var db = openDatabase('change_history_db', '1.0', 'Feature: Hot Close', 1024 * 1024 * 100);
   
-  // Allow user ability to clear DB of changes
+  // Attempt creating default DB tables if not existing in db already
+  if (!db) {
+    console.log("Database error! Database 'change_history_db' has not been loaded!");
+  } else { 
+    
+    db.transaction(function(tx) {
+      tx.executeSql('CREATE TABLE IF NOT EXISTS unsaved_doc_changes (id INTEGER PRIMARY KEY, sessionId, str__DocTxt)', [],
+        function(tx, results) {
+          console.log("Successfully created table 'unsaved_doc_changes'")
+        },
+        function(tx, error) {
+          console.log("Could not create table 'unsaved_doc_changes'")
+        }
+      ); 
+
+      tx.executeSql('CREATE TABLE IF NOT EXISTS undo_redo_history (id INTEGER PRIMARY KEY, sessionId, str__DocHistory)', [],
+        function(tx, results) {
+          console.log("Successfully created table 'undo_redo_history'")
+        },
+        function(tx, error) {
+          console.log("Could not create table 'undo_redo_history'")
+        }
+      );
+   
+      tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId, int__CursorPos, int__ScrollPos)', [],
+        function(tx, results) {
+          console.log("Successfully created table 'cursorpos_coords'")
+        },
+        function(tx, error) {
+          console.log("Could not create table 'cursorpos_coords'")
+        }
+      );
+      
+    });
+  }
+  
+  // Allow user ability to clear DB of accumulated change history
   function wipeDb() {
     db.transaction(function(tx) {
       tx.executeSql("DROP TABLE unsaved_doc_changes", [],
@@ -355,51 +391,48 @@ define(function(require, exports, module) {
         }
       );
     })
-  } 
+  }
 
   // This is the 'Save to DB' function
-  var storeHistoryDb = function(cursorPos, scrollPos, curTxtObj, currentTxtDeflated, fullFilePath) {
-  if (!db) {
-    console.log("NO DB LOADED")
+  var storeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
+    if (!db) {
+      console.log("NO DB LOADED")
       console.log("Database error!");
     } else { 
       try {
-        console.log("DB");
-        console.log(cursorPos, scrollPos, curTxtObj, currentTxtDeflated, fullFilePath)
-        console.log("DB");
-/*
         db.transaction(function(tx) {
           tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES (?, ?)', [fullFilePath, currentTxtDeflated],
           function(tx, results) {
             console.log("Successfully inserted into 'unsaved_doc_changes'")
           },
           function(tx, error) {
-            console.log("Could not insert into 'unsaved_doc_changes'")
-          });
-        });
-
-        tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curTxtObj],
-          function(tx, results) {
+            console.log("Could not insert into 'unsaved_doc_changes'");
+            console.log(error);
+          }); 
+          
+          tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curHistoryObjStr], function(tx, results) {
             console.log("Successfully inserted into 'undo_redo_history'")
           },
           function(tx, error) {
-            console.log("Could not insert into to 'undo_redo_history'")
-          }
-        );
-
-        console.log(newCursorPos);
-
-        tx.executeSql('INSERT INTO cursorpos_coords (sessionId, cursorPos) VALUES (?, ?)', [fullFilePath, newCursorPos], function(tx, results) {
+              console.log("Could not insert into to 'undo_redo_history'")
+              console.log(error);
+            }
+          );
+  
+          tx.executeSql('INSERT INTO cursorpos_coords (sessionId, int__CursorPos, int__ScrollPos) VALUES (?, ?, ?)', [fullFilePath, cursorPos, scrollPos], function(tx, results) { 
             console.log("Successfully inserted into 'cursorpos_coords'")
           }, function(tx, error) {
-            console.log("Could not insert into to 'cursorpos_coords'")
+            console.log("Could not insert into to 'cursorpos_coords'");
+            console.log(error);
           }
-        );
-*/
+          );
+
+        });
       } catch (err) {
         console.log("Database error! ", err)
       }
     };
+
   };
 /*
   // This is the 'Load From DB' function
@@ -443,36 +476,6 @@ define(function(require, exports, module) {
     }
   }
 */
-  // Attempt creating default tables if not exist already in db
-  if (!db) {
-    console.log("Database error! Database 'change_history_db' has not been loaded!");
-  } else {
-    db.transaction(function(tx) {
-      tx.executeSql('CREATE TABLE IF NOT EXISTS unsaved_doc_changes (id INTEGER PRIMARY KEY, sessionId, str__DocTxt)', [],
-        function(tx, results) {
-          console.log("Successfully created table 'unsaved_doc_changes'")
-        },
-        function(tx, error) {
-          console.log("Could not create table 'unsaved_doc_changes'")
-        }); 
-
-      tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId, cursorPos_Line, cursorPos_Ch, cursorPos_Sticky)', [],
-        function(tx, results) {
-          console.log("Successfully created table 'cursorpos_coords'")
-        },
-        function(tx, error) {
-          console.log("Could not create table 'cursorpos_coords'")
-        });
-
-      tx.executeSql('CREATE TABLE IF NOT EXISTS undo_redo_history (id INTEGER PRIMARY KEY, sessionId, str__DocHistory)', [],
-        function(tx, results) {
-          console.log("Successfully created table 'undo_redo_history'")
-        },
-        function(tx, error) {
-          console.log("Could not create table 'undo_redo_history'")
-        });
-    });
-  }
 
   /**
    * Creates a new CodeMirror editor instance bound to the given Document. The Document need not have
@@ -1172,20 +1175,20 @@ define(function(require, exports, module) {
               [fullFilePath]
             ],
             updatedRefsToJSON = JSON.stringify(codeMirrorRefs);
-            console.log("A");
+          
             storeHistoryDb(JSON.stringify(newCursorPos), JSON.stringify(newScrollPos), curTxtObj, currentTxtDeflated, fullFilePath); 
            
           window.localStorage.setItem("sessionId__" + fullFilePath, updatedRefsToJSON);
         } else { 
           // Change(s) in doc text detected; recording to localStorage
-          console.log("B");
+          
           storeHistoryDb(JSON.stringify(cursorPos), JSON.stringify(scrollPos), currentTextObj, curTxtDeflated, fullPathToFile);
           
           window.localStorage.setItem("sessionId__" + fullFilePath, codeMirrorRefsToJSON);
         } 
       } else { 
         // No prior history for current doc found; recording new change(s) as per normal
-        console.log("C"); 
+
         storeHistoryDb(JSON.stringify(cursorPos), JSON.stringify(scrollPos), currentTextObj, curTxtDeflated, fullPathToFile);
         
         window.localStorage.setItem("sessionId__" + fullFilePath, codeMirrorRefsToJSON);
