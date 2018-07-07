@@ -497,7 +497,7 @@ define(function(require, exports, module) {
 
           console.log(resultsArray);
           return resultsArray;
-        });
+        }); 
       } catch (err) {
         console.log("Database Error! ", err);
       }
