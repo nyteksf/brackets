@@ -396,8 +396,7 @@ define(function(require, exports, module) {
   // This is the 'Save to DB' function
   var storeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
     if (!db) {
-      console.log("NO DB LOADED")
-      console.log("Database error!");
+      console.log("Database error! No database loaded!");
     } else { 
       try {
         db.transaction(function(tx) {
@@ -464,39 +463,34 @@ define(function(require, exports, module) {
         
         console.log("1");
         
-        var resultsArray = [];
+        
 
         db.transaction(function(tx) {
+          var resultsArray = [];
+          
           tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath], function(tx, results) {
             console.log("success - unsaved_doc_changes"); 
 
-            console.log(results.rows);
-            
-            for (var i=0, len=results.length; i<len; i+=i) {
-              resultsArray.push(row);
-            }
+            //console.log(results.rows[0]);
+            resultsArray.push(results.rows[0]);
           }, function(tx, error) {
             console.log("Could not dump table 'unsaved_doc_changes'");
           });
-
+          
           tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath], function(tx, results) { 
-            console.log("Success - undo_redo_history"); 
-console.log(results.rows);  
-            
-            for (var i=0, len=results.length; i<len; i+=i) {
-              resultsArray.push(row);
-            }
+            console.log("Success - undo_redo_history");
+
+            //console.log(results.rows[0]);  
+            resultsArray.push(results.rows[0]);
           }, function(tx, error) {
             console.log("Could not dump table 'undo_redo_history'");
           });
 
           tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath], function(tx, results) {
             console.log("Success - cursorpos_coords");
-console.log(results.rows);           
             
-            for (var i=0, len=results.length; i<len; i+=i) {
-              resultsArray.push(row);
-            }
+            //console.log(results.rows[0]);
+            resultsArray.push(results.rows[0]);
           }, function(tx, error) {
             console.log("Could not dump table 'cursorpos_coords'"); 
           }); 
