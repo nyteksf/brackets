@@ -331,7 +331,7 @@ define(function(require, exports, module) {
   } else { 
     
     db.transaction(function(tx) {
-      tx.executeSql('CREATE TABLE IF NOT EXISTS unsaved_doc_changes (id INTEGER PRIMARY KEY, sessionId, str__DocTxt)', [],
+      tx.executeSql('CREATE TABLE IF NOT EXISTS unsaved_doc_changes (id INTEGER PRIMARY KEY, sessionId UNIQUE, str__DocTxt)', [],
         function(tx, results) {
           console.log("Successfully created table 'unsaved_doc_changes'")
         },
@@ -340,7 +340,7 @@ define(function(require, exports, module) {
         }
       ); 
 
-      tx.executeSql('CREATE TABLE IF NOT EXISTS undo_redo_history (id INTEGER PRIMARY KEY, sessionId, str__DocHistory)', [],
+      tx.executeSql('CREATE TABLE IF NOT EXISTS undo_redo_history (id INTEGER PRIMARY KEY, sessionId UNIQUE, str__DocHistory)', [],
         function(tx, results) {
           console.log("Successfully created table 'undo_redo_history'")
         },
@@ -349,7 +349,7 @@ define(function(require, exports, module) {
         }
       );
    
-      tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId, int__CursorPos, int__ScrollPos)', [],
+      tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId UNIQUE, int__CursorPos, int__ScrollPos)', [],
         function(tx, results) {
           console.log("Successfully created table 'cursorpos_coords'")
         },
@@ -408,25 +408,45 @@ define(function(require, exports, module) {
           function(tx, error) {
             console.log("Could not insert into 'unsaved_doc_changes'");
             console.log(error);
-          }); 
+            if (error.code === 6) {
+              tx.executeSql('UPDATE unsaved_doc_changes SET str__DocTxt=? WHERE sessionId=?', [currentTxtDeflated, fullFilePath], function(tx, results) {
+                  console.log("UPDATED ROW, unsaved_doc_changes");
+                }, function (tx, error) {
+                  console.log(error); 
+              });
+            }
+          });
           
           tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curHistoryObjStr], function(tx, results) {
-            console.log("Successfully inserted into 'undo_redo_history'")
-          },
-          function(tx, error) {
+              console.log("Successfully inserted into 'undo_redo_history'")
+            },
+            function(tx, error) { 
               console.log("Could not insert into to 'undo_redo_history'")
               console.log(error);
+              if (error.code === 6) { 
+                tx.executeSql('UPDATE undo_redo_history SET str__DocHistory=? WHERE sessionId=?', [curHistoryObjStr, fullFilePath], function(tx, results) {
+                  console.log("UPDATED ROW, undo_redo_history");
+                }, function (tx, error) {
+                  console.log(error);
+                }); 
+              }
             }
           );
   
           tx.executeSql('INSERT INTO cursorpos_coords (sessionId, int__CursorPos, int__ScrollPos) VALUES (?, ?, ?)', [fullFilePath, cursorPos, scrollPos], function(tx, results) { 
-            console.log("Successfully inserted into 'cursorpos_coords'")
-          }, function(tx, error) {
-            console.log("Could not insert into to 'cursorpos_coords'");
-            console.log(error);
-          }
+              console.log("Successfully inserted into 'cursorpos_coords'")
+            }, function(tx, error) {
+              console.log("Could not insert into to 'cursorpos_coords'");
+              console.log(error);
+              if (error.code === 6) {
+                tx.executeSql('UPDATE cursorpos_coords SET int__CursorPos=?, int__ScrollPos=? WHERE sessionId=?', [cursorPos, scrollPos, fullFilePath], function(tx, results) {
+                  console.log("UPDATED ROW, cursorpos_coords");
+                }, function (tx, error) {
+                  console.log(error);
+                });
+              }
+            }
           );
-
         });
       } catch (err) {
         console.log("Database error! ", err)
@@ -441,24 +461,31 @@ define(function(require, exports, module) {
       console.log("Database error! Did not load query result!")
     } else {
       try {
+        
+        console.log("1");
+        
         var resultsArray = [];
 
         db.transaction(function(tx) {
           tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath], function(tx, results) {
-            console.log("success - unsaved_doc_changes");
+            console.log("success - unsaved_doc_changes"); 
 
             console.log(results.rows);
             
-            resultsArray.push(results.rows[0].str__DocTxt);
+            for (var i=0, len=results.length; i<len; i+=i) {
+              resultsArray.push(row);
+            }
           }, function(tx, error) {
             console.log("Could not dump table 'unsaved_doc_changes'");
           });
 
-          tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath], function(tx, results) {
-            console.log("Success - undo_redo_history");
-console.log(results.rows);
+          tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath], function(tx, results) { 
+            console.log("Success - undo_redo_history"); 
+console.log(results.rows);  
             
-            resultsArray.push(results.rows[0].str__DocHistory);
+            for (var i=0, len=results.length; i<len; i+=i) {
+              resultsArray.push(row);
+            }
           }, function(tx, error) {
             console.log("Could not dump table 'undo_redo_history'");
           });
@@ -467,9 +494,11 @@ console.log(results.rows);
             console.log("Success - cursorpos_coords");
 console.log(results.rows);           
             
-            resultsArray.push(results.rows[0].cursorPos);
+            for (var i=0, len=results.length; i<len; i+=i) {
+              resultsArray.push(row);
+            }
           }, function(tx, error) {
-            console.log("Could not dump table 'cursorpos_coords'");
+            console.log("Could not dump table 'cursorpos_coords'"); 
           }); 
 
           console.log(resultsArray);
@@ -3293,7 +3322,7 @@ console.log(results.rows);
   Editor.LINE_NUMBER_GUTTER_PRIORITY = LINE_NUMBER_GUTTER_PRIORITY;
   Editor.CODE_FOLDING_GUTTER_PRIORITY = CODE_FOLDING_GUTTER_PRIORITY;
 
-  // Set up listeners for preference changes
+  // Set up listeners for preference changes 
   editorOptions.forEach(function(prefName) {
     PreferencesManager.on("change", prefName, function() {
       _instances.forEach(function(editor) {
@@ -3301,6 +3330,8 @@ console.log(results.rows);
       });
     });
   });
+  
+  //wipeDb();
   
   // Define public API
   exports.Editor = Editor;
