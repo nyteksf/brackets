@@ -393,18 +393,29 @@ define(function(require, exports, module) {
     
   // Remove specific rows from DB by sessionId
   function delRowsDb (filePath) {
-      try {      
-        for (var i=0, len=tables.length-1; i<len; i++) {
-            tables.forEach(function (table) {
-                Db.transaction(function(tx) {
-                  tx.executeSql('DELETE FROM ? WHERE sessionId = ?', [tables[i], filePath], function(tx, results) {
-                    console.log("success - " + tables[i] + " rows removed.");
-                  }, function(tx, error) {
-                    console.log("Error: Could not remove rows from '" + tables[i] + "'.");
-                  });
-                });
+      try {
+        Db.transaction(function(tx) {
+            tx.executeSql('DELETE FROM cursorpos_coords WHERE sessionId=?', [filePath],
+            function(tx, results) {
+                    console.log("success - 1 row deleted.");
+            }, function(tx, error) {
+                    console.log(error);
             });
-        }
+                
+            tx.executeSql('DELETE FROM undo_redo_history WHERE sessionId=?', [filePath],
+            function(tx, results) {
+                console.log("success - 1 row deleted.");
+            }, function(tx, error) {
+                console.log(error);
+            });
+                
+            tx.executeSql('DELETE FROM unsaved_doc_changes WHERE sessionId=?', [filePath],
+            function(tx, results) {
+                console.log("success - 1 row deleted.");
+            }, function(tx, error) {
+                console.log(error);
+            });
+        });
       } catch (err) {
           console.log(err);
       }
