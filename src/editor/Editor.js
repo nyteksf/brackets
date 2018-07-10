@@ -318,19 +318,18 @@ define(function(require, exports, module) {
    * that affect all editors, e.g. tabbing or color scheme settings.
    * @type {Array.<Editor>}
    */
-  var _instances = []; 
+  var _instances = [];
 
   /*
-   * Load Web SQL/SQLite3 Based Persistence of Unsaved Changes
+   * Load Web SQL/SQLite3 250 MB Based Persistence of Unsaved Changes
    */
-  var db = openDatabase('change_history_db', '1.0', 'Feature: Hot Close', 1024 * 1024 * 100);
+  var Db = openDatabase('change_history_db', '1.0', 'Feature: Hot Close', 1024 * 1024 * 250);
   
-  // Attempt creating default DB tables if not existing in db already
-  if (!db) {
+  // Attempt creation of default DB tables if not in DB already
+  if (!Db) {
     console.log("Database error! Database 'change_history_db' has not been loaded!");
   } else { 
-    
-    db.transaction(function(tx) {
+    Db.transaction(function(tx) {
       tx.executeSql('CREATE TABLE IF NOT EXISTS unsaved_doc_changes (id INTEGER PRIMARY KEY, sessionId UNIQUE, str__DocTxt)', [],
         function(tx, results) {
           console.log("Successfully created table 'unsaved_doc_changes'")
@@ -357,95 +356,148 @@ define(function(require, exports, module) {
           console.log("Could not create table 'cursorpos_coords'")
         }
       );
-      
     });
   }
+    
+  // Static Db References    
+  var tables   = [  
+                    "cursorpos_coords",
+                    "undo_redo_history",
+                    "unsaved_doc_changes"
+                 ],
+      keyNames = [
+                    "int__CursorPos",
+                    "str__DocHistory",
+                    "str__DocTxt"
+                 ];
   
+  // Debugging: Display DB contents by sessionId
+  function printContentsDb (filePath) {
+      try {
+        for (var i=0, len=tables.length-1; i<len; i++) {
+            tables.forEach(function (table) {
+                Db.transaction(function(tx) {
+                  tx.executeSql('DELETE FROM ? WHERE sessionId = ?', [tables[i], fullFilePath], function(tx, results) {
+                    console.log("success - " + tables[i] + " row printed.");
+                    console.log(results.rows[0].keyNames[i]);
+                  }, function(tx, error) {
+                    console.log("Error: Could not print row from table '" + tables[i] + "'.");
+                  });
+                });
+            });
+        }
+      } catch (err) {
+          console.log(err);
+      }    
+  }
+    
+  // Remove specific rows from DB by sessionId
+  function delRowsDb (filePath) {
+      try {      
+        for (var i=0, len=tables.length-1; i<len; i++) {
+            tables.forEach(function (table) {
+                Db.transaction(function(tx) {
+                  tx.executeSql('DELETE FROM ? WHERE sessionId = ?', [tables[i], filePath], function(tx, results) {
+                    console.log("success - " + tables[i] + " rows removed.");
+                  }, function(tx, error) {
+                    console.log("Error: Could not remove rows from '" + tables[i] + "'.");
+                  });
+                });
+            });
+        }
+      } catch (err) {
+          console.log(err);
+      }
+  }
+    
   // Allow user ability to clear DB of accumulated change history
   function wipeDb() {
-    db.transaction(function(tx) {
-      tx.executeSql("DROP TABLE unsaved_doc_changes", [],
-        function(tx, results) {
-          console.log("Successfully dropped 'unsaved_doc_changes'")
-        },
-        function(tx, error) {
-          console.log("Could not delete 'unsaved_doc_changes'")
+      try {
+        for (var i=0, len=tables.length-1; i<len; i++) {
+            Db.transaction(function(tx) {
+                tx.executeSql("DROP TABLE ?", [tables[i]],
+                    function(tx, results) {
+                        console.log("Successfully dropped table " + tables[i]);
+                    },
+                    function(tx, error) {
+                        console.log("Could not delete table " + tables[i])
+                    }
+                );
+            })
         }
-      );
-
-      tx.executeSql("DROP TABLE undo_redo_history", [],
-        function(tx, results) {
-          console.log("Successfully dropped 'undo_redo_history'")
-        },
-        function(tx, error) {
-          console.log("Could not delete 'undo_redo_history'")
-        }
-      );
-
-      tx.executeSql("DROP TABLE cursorpos_coords", [],
-        function(tx, results) {
-          console.log("Successfully dropped 'cursorpos_coords'")
-        },
-        function(tx, error) {
-          console.log("Could not delete 'cursorpos_coords'")
-        }
-      );
-    })
+      } catch (err) {
+          console.log(err);
+      }
   }
 
-  // This is the 'Save to DB' function
-  var storeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
-    if (!db) {
+  // This is the 'Save Change Data to DB' function
+  var sendChangeHistoryToDb = function(cursorPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
+    var values = [
+                    cursorPos,
+                    curHistoryObjStr,
+                    currentTxtDeflated
+                 ];
+
+    if (!Db) {
       console.log("Database error! No database loaded!");
-    } else { 
+    } else {
       try {
-        db.transaction(function(tx) {
-          tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES (?, ?)', [fullFilePath, currentTxtDeflated],
-          function(tx, results) {
-            console.log("Successfully inserted into 'unsaved_doc_changes'")
-          },
-          function(tx, error) {
-            console.log("Could not insert into 'unsaved_doc_changes'");
-            console.log(error);
-            if (error.code === 6) {
-              tx.executeSql('UPDATE unsaved_doc_changes SET str__DocTxt=? WHERE sessionId=?', [currentTxtDeflated, fullFilePath], function(tx, results) {
-                  console.log("UPDATED ROW, unsaved_doc_changes");
-                }, function (tx, error) {
-                  console.log(error); 
-              });
-            }
-          });
+          console.log("Starting sync to db...");
+        Db.transaction(function (tx) { 
+
+            tx.executeSql('INSERT INTO cursorpos_coords (sessionId, int__CursorPos) VALUES (?, ?)', [fullFilePath, cursorPos], 
+                function(tx, results) {
+                    console.log("Successfully inserted into cursorpos_coords");
+                },
+                function(tx, error) {
+                    console.log("Could not insert into cursorpos_coords");
+                    console.log(error);
+                    if (error.code === 6) {
+                        tx.executeSql('UPDATE cursorpos_coords SET int__CursorPos=? WHERE sessionId=?', [cursorPos, fullFilePath], 
+                        function(tx, results) {
+                            console.log("UPDATED ROW IN cursorpos_coords");
+                        }, function (tx, error) {
+                            console.log(error);
+                        });
+                    }
+                }
+            );
           
-          tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curHistoryObjStr], function(tx, results) {
-              console.log("Successfully inserted into 'undo_redo_history'")
-            },
-            function(tx, error) { 
-              console.log("Could not insert into to 'undo_redo_history'")
-              console.log(error);
-              if (error.code === 6) { 
-                tx.executeSql('UPDATE undo_redo_history SET str__DocHistory=? WHERE sessionId=?', [curHistoryObjStr, fullFilePath], function(tx, results) {
-                  console.log("UPDATED ROW, undo_redo_history");
-                }, function (tx, error) {
-                  console.log(error);
-                }); 
-              }
-            }
-          );
-  
-          tx.executeSql('INSERT INTO cursorpos_coords (sessionId, int__CursorPos, int__ScrollPos) VALUES (?, ?, ?)', [fullFilePath, cursorPos, scrollPos], function(tx, results) { 
-              console.log("Successfully inserted into 'cursorpos_coords'")
-            }, function(tx, error) {
-              console.log("Could not insert into to 'cursorpos_coords'");
-              console.log(error);
-              if (error.code === 6) {
-                tx.executeSql('UPDATE cursorpos_coords SET int__CursorPos=?, int__ScrollPos=? WHERE sessionId=?', [cursorPos, scrollPos, fullFilePath], function(tx, results) {
-                  console.log("UPDATED ROW, cursorpos_coords");
-                }, function (tx, error) {
-                  console.log(error);
-                });
-              }
-            }
-          );
+            tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curHistoryObjStr], 
+                function(tx, results) {
+                    console.log("Successfully inserted into undo_redo_history");
+                },
+                function(tx, error) {
+                    console.log("Could not insert into undo_redo_history");
+                    console.log(error);
+                    if (error.code === 6) {
+                        tx.executeSql('UPDATE undo_redo_history SET str__DocHistory=? WHERE sessionId=?', [curHistoryObjStr, fullFilePath], 
+                        function(tx, results) {
+                            console.log("UPDATED ROW IN undo_redo_history");
+                        }, function (tx, error) {
+                            console.log(error);
+                        });
+                    }
+                }
+            );
+            
+            tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES (?, ?)', [fullFilePath, currentTxtDeflated], 
+                function(tx, results) {
+                    console.log("Successfully inserted into unsaved_doc_changes");
+                },
+                function(tx, error) {
+                    console.log("Could not insert into unsaved_doc_changes");
+                    console.log(error);
+                    if (error.code === 6) { 
+                        tx.executeSql('UPDATE unsaved_doc_changes SET str__DocTxt=? WHERE sessionId=?', [currentTxtDeflated, fullFilePath], 
+                        function(tx, results) {
+                            console.log("UPDATED ROW IN unsaved_doc_changes");
+                        }, function (tx, error) {
+                            console.log(error);
+                        });
+                    }
+                }
+            );
         });
       } catch (err) {
         console.log("Database error! ", err)
@@ -454,50 +506,37 @@ define(function(require, exports, module) {
 
   };
 
-  // This is the 'Load From DB' function
-  var fetchHistoryDb = function(fullFilePath) {
-    if (!db) {
+  // This is the 'Load Change Data From DB' function
+  var getLoadHistoryFromDb = function (fullFilePath) {
+    if (!Db) {
       console.log("Database error! Did not load query result!")
     } else {
       try {
-        
-        console.log("1");
-        
-        
-
-        db.transaction(function(tx) {
-          var resultsArray = [];
+        var savedDocRefs = [], //cursorPos, chgHistory, savedDocTxt
+            curDocTxt = []; // 
+                  
+        for (var i=0, len=tables.length-1; i<len; i++) {
+            tables.forEach(function (table) {
+                Db.transaction(function(tx) {
+                  tx.executeSql('SELECT * FROM ? WHERE sessionId = ?', [tables[i], fullFilePath], function(tx, results) {
+                    console.log("Success: " + table + " fetched, loading data.");
+                    savedDocRefs.push(results.rows[0].keyNames[i]);
+                  }, function(tx, error) {
+                    console.log("Error: Could not grab rows from '" + table + "'.");
+                  });
+                });
+            });
+        }
+         
+        console.log(savedDocRefs, curDocTxt);
           
-          tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath], function(tx, results) {
-            console.log("success - unsaved_doc_changes"); 
-
-            //console.log(results.rows[0]);
-            resultsArray.push(results.rows[0]);
-          }, function(tx, error) {
-            console.log("Could not dump table 'unsaved_doc_changes'");
-          });
-          
-          tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath], function(tx, results) { 
-            console.log("Success - undo_redo_history");
-
-            //console.log(results.rows[0]);  
-            resultsArray.push(results.rows[0]);
-          }, function(tx, error) {
-            console.log("Could not dump table 'undo_redo_history'");
-          });
-
-          tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath], function(tx, results) {
-            console.log("Success - cursorpos_coords");
+        if (savedDocRefs[2] === curDocTxt) {
+            // Load only cursorPos, store everything in savedDocRefs once again
             
-            //console.log(results.rows[0]);
-            resultsArray.push(results.rows[0]);
-          }, function(tx, error) {
-            console.log("Could not dump table 'cursorpos_coords'"); 
-          }); 
-
-          console.log(resultsArray);
-          return resultsArray;
-        });
+            //sendChangeHistoryToDb(savedDocRefs["0"], savedDocRefs[1], savedDocRefs[2], fullFilePath);
+        } else {
+            // Load docTxt, change history and cursorpos
+        }
       } catch (err) {
         console.log("Database Error! ", err);
       }
@@ -565,7 +604,7 @@ define(function(require, exports, module) {
     this._hideMarks = [];
     this._lastEditorWidth = null;
 
-    this._$messagePopover = null;
+    this._$messagePopover = null; 
 
     // To track which pane the editor is being attached to if it's a full editor
     this._paneId = null;
@@ -1133,7 +1172,7 @@ define(function(require, exports, module) {
       return ProjectManager.makeProjectRelativeIfPossible(doc.file._path);
     }
   }
-
+console.log("PENIS");
   /** 
    * Stashes a copy of the current document text, history, etc. in localStorage
    */
@@ -1143,222 +1182,23 @@ define(function(require, exports, module) {
       currentTextObj = RawDeflate.deflate(curRawTxtObj),
       currentTxt = that._codeMirror.getValue(),
       fullPathToFile = that.document.file._path,
-      scrollPos = that.getScrollPos(),
       cursorPos = that.getCursorPos(),
       docTxtSpecialCharsEncoded = He.encode(currentTxt),
       curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
-      codeMirrorRefs = [
-        [cursorPos.line, cursorPos.ch, cursorPos.sticky],
-        [scrollPos],
-        [currentTextObj],
-        [curTxtDeflated],
-        [fullPathToFile]
-      ],  
-      codeMirrorRefsToJSON = JSON.stringify(codeMirrorRefs),
-      fullFilePath = that.document.file._path,
-      unsavedDocs = [],
       result = new $.Deferred(),
       promise = result.promise();
  
-    
-    // Ensure if localStorage full, it's clear before proceeding to write above changes
     try {
-      
-      if (window.localStorage.getItem("sessionId__" + fullFilePath)) {
-        fetchHistoryDb(fullFilePath); // TESTING <-
-        // If the current doc has prior history attached, then opening/reloading 
-        // without below check would cause cursorPos to shift incorrectly to 
-        // {'line': 0, 'ch': 0...}
-
-        // Get recorded doc txt for comparison against currently open version of same
-        var parsedSessionRefs = JSON.parse(window.localStorage.getItem("sessionId__" + fullFilePath)),
-          priorDocTxt = He.decode(RawDeflate.inflate(parsedSessionRefs[3].toString()));
-
-        // If cur text is same as last sync, document is being opened/re-opened; do NOOP
-        if (currentTxt === priorDocTxt) {
-          priorDocTxt = null;
-
-          var lastCursorPosX    = parsedSessionRefs[0][0],
-              lastCursorPosY    = parsedSessionRefs[0][1],
-              lastChangeHistory = JSON.parse(He.decode(RawDeflate.inflate(parsedSessionRefs[2].toString())));
-
-          // Reload document change history file
-          that._codeMirror.setHistory(lastChangeHistory);
-
-          // Move cursor from "{'Line': 0, 'ch': 0 ...}" back to its prior position
-          that.setCursorPos(lastCursorPosX, lastCursorPosY, true);
-
-          // Preserve updated stats for usage at next crash/reload event
-          var curTxtObj = RawDeflate.deflate(He.encode(JSON.stringify(that._codeMirror.getHistory()))),
-            fullFilePath = that.document.file._path,
-            newScrollPos = that.getScrollPos(),
-            newCursorPos = that.getCursorPos(),
-            curTxt = that._codeMirror.getValue(),
-            docSpecialCharsEncoded = He.encode(curTxt),
-            currentTxtDeflated = RawDeflate.deflate(docSpecialCharsEncoded),
-            codeMirrorRefs = [
-              [newCursorPos.line, newCursorPos.ch, newCursorPos.sticky],
-              [newScrollPos], 
-              [curTxtObj],
-              [currentTxtDeflated],
-              [fullFilePath]
-            ],
-            updatedRefsToJSON = JSON.stringify(codeMirrorRefs);
-          
-            storeHistoryDb(JSON.stringify(newCursorPos), JSON.stringify(newScrollPos), curTxtObj, currentTxtDeflated, fullFilePath); 
-           
-          window.localStorage.setItem("sessionId__" + fullFilePath, updatedRefsToJSON);
-        } else { 
-          // Change(s) in doc text detected; recording to localStorage
-          
-          storeHistoryDb(JSON.stringify(cursorPos), JSON.stringify(scrollPos), currentTextObj, curTxtDeflated, fullPathToFile);
-          
-          window.localStorage.setItem("sessionId__" + fullFilePath, codeMirrorRefsToJSON);
-        } 
-      } else { 
-        // No prior history for current doc found; recording new change(s) as per normal
-
-        storeHistoryDb(JSON.stringify(cursorPos), JSON.stringify(scrollPos), currentTextObj, curTxtDeflated, fullPathToFile);
-        
-        window.localStorage.setItem("sessionId__" + fullFilePath, codeMirrorRefsToJSON);
-      } 
-
+      console.log("_captureUnsavedDocChanges working...")    
+      sendChangeHistoryToDb(cursorPos, currentTextObj, curTxtDeflated, fullPathToFile);
       result.resolve(that);
-    } catch (err) {
-      
+    } catch (err) {  
       console.log(err);
-
-      var listOfFiles = MainViewManager.getAllOpenFiles();
-
-      if (listOfFiles.length > 0) { 
-        listOfFiles.forEach(function(file) { 
-          var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
-          if (doc && doc.isDirty) {
-            unsavedDocs.push(doc);
-          }
-        });
-      }
-
-      if (unsavedDocs.length === 0) {
-        // NOOP; No dirty file(s) detected
-        result.reject();
-      } else if (unsavedDocs.length === 1) {
-        // Single dirty file detected
-        var file_Path = unsavedDocs[0].file._path,
-          file_Name = unsavedDocs[0].file._name,
-          file = unsavedDocs[0];
-          msg = StringUtils.format(
-            Strings.CANNOT_PERSIST_CHANGES_MESSAGE,
-            StringUtils.breakableUrl(file_Name)
-          );
-
-        Dialogs.showModalDialog(
-            DefaultDialogs.DIALOG_ID_STORAGE_FULL,
-            Strings.CANNOT_PERSIST_CHANGES_TITLE,
-            msg, [{
-                className: Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                id: Dialogs.DIALOG_BTN_CANCEL,
-                text: Strings.CANCEL
-              },
-              {
-                className: Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                id: Dialogs.DIALOG_BTN_OK,
-                text: Strings.SAVE_AND_OVERWRITE
-              }
-            ],
-            "autoDismiss"
-          )
-          .done(function(id) {
-            if (id === Dialogs.DIALOG_BTN_OK) {
-              // "Overwrite localStorage" case:
-              var thisFilePath = file.file._path,
-                  thisCurTxt = file._masterEditor._codeMirror.getValue(),
-                  thisCurHistory = RawDeflate.deflate(He.encode(JSON.stringify(file._masterEditor._codeMirror.getHistory()))),
-                  thisCursorPos = file._masterEditor.getCursorPos(),
-                  thisScrollPos = file._masterEditor.getScrollPos(),
-                  docTxtSpecCharsEncoded = He.encode(thisCurrentTxtObj),
-                  deflatedCurrentTxt = RawDeflate.deflate(docTxtSpecialCharsEncoded);
-              
-              window.localStorage.clear();
-              
-              // storeHistoryDb(thisCursorPos, thisScrollPos, thisCurHistory, thisCurTxt, thisFilePath);
-              
-              window.localStorage.setItem("sessionId__" + file_Path, codeMirrorRefsToJSON);
-
-              result.resolve(that);
-            } else {
-              result.reject();
-            }
-          });
-      } else if (unsavedDocs.length > 1) {
-        // Multiple dirty files: show a single bulk prompt listing all files
-        var message = Strings.MULTI_CANNOT_PERSIST_CHANGES_MSG + FileUtils.makeDialogFileList(_.map(unsavedDocs, _shortTitleForDocument));
-
-        Dialogs.showModalDialog(
-            DefaultDialogs.DIALOG_ID_STORAGE_FULL,
-            Strings.CANNOT_PERSIST_CHANGES_TITLE,
-            message, [{
-                className: Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                id: Dialogs.DIALOG_BTN_CANCEL,
-                text: Strings.CANCEL
-              },
-              {
-                className: Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                id: Dialogs.DIALOG_BTN_OK,
-                text: Strings.SAVE_AND_OVERWRITE
-              }
-            ],
-            "autoDismiss"
-          )
-          .done(function(id) {
-            if (id === Dialogs.DIALOG_BTN_OK) {
-              var fileRefsToJSON = unsavedDocs.map(function(file) {
-                var thisFileFullPath = file.file._path,
-                  thisCurrentTxt = file._masterEditor._codeMirror.getValue(),
-                  thisCurrentHistory = RawDeflate.deflate(He.encode(JSON.stringify(file._masterEditor._codeMirror.getHistory()))),
-                  thisCursorPos = file._masterEditor.getCursorPos(),
-                  thisScrollPos = file._masterEditor.getScrollPos(),
-                  docTxtSpecialCharsEncoded = He.encode(thisCurrentTxt),
-                  deflatedCurTxt = RawDeflate.deflate(docTxtSpecialCharsEncoded);
-
-                var refs = [
-                    [thisCursorPos.line, thisCursorPos.ch, thisCursorPos.sticky],
-                    [thisScrollPos],
-                    [thisCurrentHistory],
-                    [deflatedCurTxt],
-                    [thisFileFullPath]
-                  ],
-                  refsToJSON = JSON.stringify(refs);
-
-                return refsToJSON;
-              });
-
-              window.localStorage.clear();
-
-              fileRefsToJSON.forEach(function(historyFile) {
-                var currentFilePath = historyFile._path,
-                  historyFile = RawDeflate.deflate(He.encode(JSON.stringify(historyFile)));
-                
-                //storeHistoryDb(thisCursorPos, thisScrollPos, thisCurrentHistory, deflatedCurTxt, thisFullFilePath);
-                
-                window.localStorage.setItem("sessionId__" + currentFilePath, historyFile);
-              });
-
-              result.resolve(that);
-            } else {
-              result.reject();
-            }
-          }).fail(function() {
-            result.reject();
-          });
-      }
+      result.reject();
     }
 
     return promise;
   }
-
-  var fullPathToFile,
-    currentTextObj;
 
   /**
    * Responds to changes in the CodeMirror editor's text, syncing the changes to the Document.
@@ -1513,7 +1353,6 @@ define(function(require, exports, module) {
     this._codeMirror.on("focus", function() {
       self._focused = true;
       self.trigger("focus", self);
-
     });
 
     this._codeMirror.on("blur", function() {
@@ -3331,5 +3170,9 @@ define(function(require, exports, module) {
   exports.Editor = Editor;
   exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
   exports.BOUNDARY_IGNORE_TOP = BOUNDARY_IGNORE_TOP;
-  exports.db = db;
+  exports.Db = Db;
+  exports.delRowsDb = delRowsDb;
+  exports.printContentsDb  = printContentsDb;
+  exports.sendChangeHistoryToDb  = sendChangeHistoryToDb;
+  exports.getLoadHistoryFromDb = getLoadHistoryFromDb;
 });

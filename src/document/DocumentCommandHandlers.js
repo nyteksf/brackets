@@ -58,6 +58,11 @@ define(function (require, exports, module) {
         StatusBar           = require("widgets/StatusBar"),
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
+        Db                  = require("editor/Editor").Db,
+        delRowsDb           = require("editor/Editor").delRowsDb,
+        printDbContents     = require("editor/Editor").printDbContents,
+        getLoadHistoryFromDb= require("editor/Editor").getLoadHistoryFromDb,
+        sendHistoryToDb     = require("editor/Editor").sendHistoryToDb,
         _                   = require("thirdparty/lodash"),
         CompressionUtils    = require("thirdparty/rawinflate"),
         CompressionUtils    = require("thirdparty/rawdeflate"),
@@ -830,6 +835,10 @@ define(function (require, exports, module) {
         var result = new $.Deferred(),
             file = docToSave.file;
 
+        if (hotClose) {
+            delRowsDb(file._path);
+        }
+        
         function handleError(error) {
             _showSaveFileError(error, file.fullPath)
                 .done(function () {
@@ -1134,13 +1143,7 @@ define(function (require, exports, module) {
             activeDoc = activeEditor && activeEditor.document,
             doc = (commandData && commandData.doc) || activeDoc,
             settings;
-        
-        // If pref set to true, attempt reload of prior undo/redo history
-        if (hotClose) {
-            var curFilePath = doc.file._path;
-            window.localStorage.removeItem("sessionId__" + curFilePath);
-        }
-
+    
         if (doc && !doc.isSaving) {
             if (doc.isUntitled()) {
                 if (doc === activeDoc) {
@@ -1605,12 +1608,9 @@ define(function (require, exports, module) {
     
     /** Show a textfield to rename whatever is currently selected in the sidebar (or current doc if nothing else selected) */
     function handleFileRename() {
-            
-        // If preference set to persistent undo/redo history
         if (hotClose) {
-            // Removes history item from localStorage before rename
             var fileName = MainViewManager.getCurrentlyViewedFile();
-            window.localStorage.removeItem("sessionId__" + fileName._path);
+            delRowsDb(fileName._path);
         }
         
         // Prefer selected sidebar item (which could be a folder)
@@ -1740,10 +1740,10 @@ define(function (require, exports, module) {
         )
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
-                    // Delete undo/redo history from localStorage if pref set to persist history
                     if (hotClose) {
-                        window.localStorage.removeItem("sessionId__" + thisFilePath);
+                        delRowsDb(thisFilePath);
                     }
+                    
                     ProjectManager.deleteItem(entry);
                 }
             });
