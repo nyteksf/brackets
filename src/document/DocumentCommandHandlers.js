@@ -50,7 +50,7 @@ define(function (require, exports, module) {
         Strings             = require("strings"),
         PopUpManager        = require("widgets/PopUpManager"),
         PreferencesManager  = require("preferences/PreferencesManager"),
-        PerfUtils           = require("utils/PerfUtils"), 
+        PerfUtils           = require("utils/PerfUtils"),
         KeyEvent            = require("utils/KeyEvent"),
         Inspector           = require("LiveDevelopment/Inspector/Inspector"),
         Menus               = require("command/Menus"),
@@ -59,7 +59,7 @@ define(function (require, exports, module) {
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
         Db                  = require("editor/Editor").Db,
-        delRowsDb           = require("editor/Editor").delRowsDb,
+        delAllRowsDb        = require("editor/Editor").delAllRowsDb,
         printDbContents     = require("editor/Editor").printDbContents,
         getLoadHistoryFromDb= require("editor/Editor").getLoadHistoryFromDb,
         sendHistoryToDb     = require("editor/Editor").sendHistoryToDb,
@@ -836,9 +836,9 @@ define(function (require, exports, module) {
             file = docToSave.file;
 
         if (hotClose) {
-            delRowsDb(file._path);
+            delAllRowsDb(file._path);
         }
-        
+
         function handleError(error) {
             _showSaveFileError(error, file.fullPath)
                 .done(function () {
@@ -1610,7 +1610,7 @@ define(function (require, exports, module) {
     function handleFileRename() {
         if (hotClose) {
             var fileName = MainViewManager.getCurrentlyViewedFile();
-            delRowsDb(fileName._path);
+            delAllRowsDb(fileName._path);
         }
         
         // Prefer selected sidebar item (which could be a folder)
@@ -1741,7 +1741,7 @@ define(function (require, exports, module) {
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
                     if (hotClose) {
-                        delRowsDb(thisFilePath);
+                        delAllRowsDb(thisFilePath);
                     }
                     
                     ProjectManager.deleteItem(entry);

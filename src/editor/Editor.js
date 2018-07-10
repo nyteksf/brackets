@@ -337,7 +337,7 @@ define(function(require, exports, module) {
         function(tx, error) {
           console.log("Could not create table 'unsaved_doc_changes'")
         }
-      ); 
+      );
 
       tx.executeSql('CREATE TABLE IF NOT EXISTS undo_redo_history (id INTEGER PRIMARY KEY, sessionId UNIQUE, str__DocHistory)', [],
         function(tx, results) {
@@ -388,53 +388,55 @@ define(function(require, exports, module) {
         }
       } catch (err) {
           console.log(err);
-      }    
+      }
   }
     
-  // Remove specific rows from DB by sessionId
-  function delRowsDb (filePath) {
-      try {
+  // Delete individual row from Db
+  function delRowDb (table, filePath) {
         Db.transaction(function(tx) {
-            tx.executeSql('DELETE FROM cursorpos_coords WHERE sessionId=?', [filePath],
+            tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"', [],
             function(tx, results) {
-                    console.log("success - 1 row deleted.");
-            }, function(tx, error) {
-                    console.log(error);
-            });
-                
-            tx.executeSql('DELETE FROM undo_redo_history WHERE sessionId=?', [filePath],
-            function(tx, results) {
-                console.log("success - 1 row deleted.");
-            }, function(tx, error) {
-                console.log(error);
-            });
-                
-            tx.executeSql('DELETE FROM unsaved_doc_changes WHERE sessionId=?', [filePath],
-            function(tx, results) {
-                console.log("success - 1 row deleted.");
+                console.log("success - 1 row deleted from " + table);
             }, function(tx, error) {
                 console.log(error);
             });
         });
+    }
+
+  // Remove specific rows from DB by sessionId
+  function delAllRowsDb (filePath) {
+      var tables = ["cursorpos_coords", "undo_redo_history", "unsaved_doc_changes"];
+      try {
+	    var table;
+        for (var i=0; i<3; i++) {
+            table = tables[i];
+            delRowDb(table, filePath);
+        } 
       } catch (err) {
           console.log(err);
       }
   }
+
+  // Delete a single table from DB
+  function delTableDb (table) {
+      Db.transaction(function(tx) {
+            tx.executeSql("DROP TABLE " + table, [],
+                function(tx, results) {
+                    console.log("Successfully dropped " + table);
+                },
+                function(tx, error) {
+                    console.log(error); 
+                }
+            );
+        })
+  };    
     
   // Allow user ability to clear DB of accumulated change history
-  function wipeDb() {
+  function wipeAllDb() {
       try {
-        for (var i=0, len=tables.length-1; i<len; i++) {
-            Db.transaction(function(tx) {
-                tx.executeSql("DROP TABLE ?", [tables[i]],
-                    function(tx, results) {
-                        console.log("Successfully dropped table " + tables[i]);
-                    },
-                    function(tx, error) {
-                        console.log("Could not delete table " + tables[i])
-                    }
-                );
-            })
+        for (var i=0, len=tables.length; i<len; i++) {
+            var table = tables[i];
+            delTableDb(table);
         }
       } catch (err) {
           console.log(err);
@@ -518,15 +520,15 @@ define(function(require, exports, module) {
   };
 
   // This is the 'Load Change Data From DB' function
-  var getLoadHistoryFromDb = function (fullFilePath) {
+  var getLoadChangeHistFromDb = function (fullFilePath) {
     if (!Db) {
       console.log("Database error! Did not load query result!")
     } else {
       try {
         var savedDocRefs = [], //cursorPos, chgHistory, savedDocTxt
-            curDocTxt = []; // 
-                  
-        for (var i=0, len=tables.length-1; i<len; i++) {
+            curDocTxt = [];
+
+        for (var i=0, len=tables.length; i<len; i++) {
             tables.forEach(function (table) {
                 Db.transaction(function(tx) {
                   tx.executeSql('SELECT * FROM ? WHERE sessionId = ?', [tables[i], fullFilePath], function(tx, results) {
@@ -1183,7 +1185,7 @@ define(function(require, exports, module) {
       return ProjectManager.makeProjectRelativeIfPossible(doc.file._path);
     }
   }
-console.log("PENIS");
+    
   /** 
    * Stashes a copy of the current document text, history, etc. in localStorage
    */
@@ -3174,16 +3176,16 @@ console.log("PENIS");
       });
     });
   });
-  
+
   //wipeDb();
-  
+
   // Define public API
   exports.Editor = Editor;
   exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
   exports.BOUNDARY_IGNORE_TOP = BOUNDARY_IGNORE_TOP;
   exports.Db = Db;
-  exports.delRowsDb = delRowsDb;
+  exports.delAllRowsDb = delAllRowsDb;
   exports.printContentsDb  = printContentsDb;
   exports.sendChangeHistoryToDb  = sendChangeHistoryToDb;
-  exports.getLoadHistoryFromDb = getLoadHistoryFromDb;
+  exports.getLoadChangeHistFromDb = getLoadChangeHistFromDb;
 });
