@@ -59,10 +59,10 @@ define(function (require, exports, module) {
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
         Db                  = require("editor/Editor").Db,
-        delAllRowsDb        = require("editor/Editor").delAllRowsDb,
-        printDbContents     = require("editor/Editor").printDbContents,
-        getLoadHistoryFromDb= require("editor/Editor").getLoadHistoryFromDb,
-        sendHistoryToDb     = require("editor/Editor").sendHistoryToDb,
+        delRowsDb           = require("editor/Editor").delRowsDb,
+        printContentsDb     = require("editor/Editor").printContentsDb,
+        loadChangeHistoryDb = require("editor/Editor").loadChangeHistoryDb,
+        sendChangeHistoryDb = require("editor/Editor").sendChangeHistoryDb,
         _                   = require("thirdparty/lodash"),
         CompressionUtils    = require("thirdparty/rawinflate"),
         CompressionUtils    = require("thirdparty/rawdeflate"),
@@ -492,10 +492,6 @@ define(function (require, exports, module) {
                 
         _doOpenWithOptionalPath(fileInfo.path, silent, paneId, commandData && commandData.options)
             .done(function (file) {
-                var filePath = file._path,
-                    refsToLoad = window.localStorage.getItem("sessionId__" + filePath),
-                    parsedRefsToLoad = JSON.parse(refsToLoad);
-            
                 HealthLogger.fileOpened(file._path, false, file._encoding);
                 if (!commandData || !commandData.options || !commandData.options.noPaneActivate) {
                     MainViewManager.setActivePaneId(paneId);
@@ -512,36 +508,16 @@ define(function (require, exports, module) {
                         EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
                                                                         fileInfo.column - 1,
                                                                         true);
-                    }
-                    result.resolve(file);
-                    
+                    }  
                 } else {
-                    if (!refsToLoad) {  // Checks if doc had been saved
-                        // Fall back on file to get last cursorPos if changes were saved
-                        if (fileInfo.line !== null) {
-                            if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                                fileInfo.column = 1;
-                            }
-                    
-                            EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                                                                        fileInfo.column - 1,
-                                                                        true);
+                    if (fileInfo.line !== null) {
+                        if (fileInfo.column === null || (fileInfo.column <= 0)) {
+                            fileInfo.column = 1;
                         }
-                        
-                        result.resolve(file);
-                    } else {
-                        if (fileInfo.line !== null) {
-                            if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                                fileInfo.column = 1;
-                            }
-                        }
-                        
-                        // Don't load version of doc txt from disk
-                        file._contents = null;
-                    
-                        result.resolve(file);
                     }
-                }
+                    file._contents = null;    
+                } 
+                result.resolve(file);
             })
             .fail(function () {
                 result.reject();
@@ -581,56 +557,17 @@ define(function (require, exports, module) {
                 //  supporting document for that file (e.g. an image)
                 var pathToFile = file.fullPath,
                     doc = DocumentManager.getOpenDocumentForPath(pathToFile),
-                    refsToLoad = window.localStorage.getItem("sessionId__" + pathToFile),
-		            parsedRefsToLoad,
                     parsedHistory,
                     docTxtToInflate,
-                    docTxtDecodedChars,
-                    cursorPosX,
-                    cursorPosY,
-                    scrollPos;
+                    docTxtDecodedChars; 
 
                 if (hotClose) {
-                    if (refsToLoad) {
-                        parsedRefsToLoad   = JSON.parse(refsToLoad),
-                        parsedHistory      = JSON.parse(He.decode(RawDeflate.inflate(parsedRefsToLoad[2].toString()))),
-                        docTxtToInflate    = parsedRefsToLoad[3].toString(),
-                        docTxtDecodedChars = He.decode(RawDeflate.inflate(docTxtToInflate)),
-                        cursorPosX         = parsedRefsToLoad[0][0],
-                        cursorPosY         = parsedRefsToLoad[0][1],
-                        scrollPos          = parsedRefsToLoad[1];
-                        
-                        // Load record of prior text into master editor
-                        doc._masterEditor._codeMirror.setValue(docTxtDecodedChars);
+                    console.log("DOWNLOADING HISTORY FOR " + pathToFile);
+                    loadChangeHistoryDb(pathToFile);
                     
-                        // Verify that records exist for current document
-                        // Open file is unsynced and sets cursorPos back to 'X=0, Y=0'
-                        // Therefore, handle case where brackets crashes again before next sync can occur
-                        window.localStorage.setItem("sessionId__" + pathToFile, refsToLoad);
-                    }
-                    
-                    result.resolve(doc); 
+                    result.reject(); 
                 } else {
-                    
                     result.resolve(doc);
-                }
-            
-                // If pref set to true, load current files saved history into CodeMirror
-                // Make sure doc lives within file
-                if (hotClose && doc !== null) {
-                    // Check if prior history exists in localStorage before attempting to load
-                    if (refsToLoad) {
-                        // Load stashed prior history obj back into memory
-                        Editor.codeMirrorRef.setHistory(parsedHistory);
-                        
-                        // Set doc to last recorded scroll position
-                        EditorManager.getCurrentFullEditor().setScrollPos(scrollPos);                  
-                        
-                        // Drop cursor into recorded prior position and center screen around it
-                        EditorManager.getCurrentFullEditor().setCursorPos(cursorPosX,
-                                                                        cursorPosY,
-                                                                        true);
-                    }
                 }
             })
             .fail(function () {
@@ -830,13 +767,13 @@ define(function (require, exports, module) {
      * @param {boolean=} force Ignore CONTENTS_MODIFIED errors from the FileSystem
      * @return {$.Promise} a promise that is resolved with the File of docToSave (to mirror
      *   the API of _doSaveAs()). Rejected in case of IO error (after error dialog dismissed).
-     */
+     */  
     function doSave(docToSave, force) {
         var result = new $.Deferred(),
             file = docToSave.file;
 
         if (hotClose) {
-            delAllRowsDb(file._path);
+            delRowsDb(file._path);
         }
 
         function handleError(error) {
@@ -1610,7 +1547,7 @@ define(function (require, exports, module) {
     function handleFileRename() {
         if (hotClose) {
             var fileName = MainViewManager.getCurrentlyViewedFile();
-            delAllRowsDb(fileName._path);
+            delRowsDb(fileName._path);
         }
         
         // Prefer selected sidebar item (which could be a folder)
@@ -1741,7 +1678,8 @@ define(function (require, exports, module) {
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
                     if (hotClose) {
-                        delAllRowsDb(thisFilePath);
+                        delRowsDb(thisFilePath);
+                        printContentsDb();
                     }
                     
                     ProjectManager.deleteItem(entry);

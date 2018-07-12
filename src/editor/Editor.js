@@ -64,6 +64,7 @@ define(function(require, exports, module) {
 
   var AnimationUtils = require("utils/AnimationUtils"),
     Async = require("utils/Async"),
+    asyncWaterfall = require("thirdparty/async-waterfall"),
     CodeMirror = require("thirdparty/CodeMirror/lib/codemirror"),
     LanguageManager = require("language/LanguageManager"),
     EventDispatcher = require("utils/EventDispatcher"),
@@ -88,6 +89,7 @@ define(function(require, exports, module) {
     CompressionUtils = require("thirdparty/rawdeflate"),
     CompressionUtils = require("thirdparty/rawinflate"),
     He = require("thirdparty/he");
+    
 
   /** Editor preferences */
 
@@ -158,8 +160,9 @@ define(function(require, exports, module) {
     description: Strings.DESCRIPTION_CLOSE_BRACKETS
   });
 
-  var HOT_CLOSE = "hotClose";
-
+  // Persist unsaved changes within DB
+  var HOT_CLOSE = "hotClose"; 
+    
   PreferencesManager.definePreference(HOT_CLOSE, "boolean", true, {
     description: Strings.DESCRIPTION_HOT_CLOSE
   });
@@ -257,12 +260,13 @@ define(function(require, exports, module) {
   PreferencesManager.definePreference(INDENT_LINE_COMMENT, "boolean", false, {
     description: Strings.DESCRIPTION_INDENT_LINE_COMMENT
   });
+    
   PreferencesManager.definePreference(INPUT_STYLE, "string", "textarea", {
     description: Strings.DESCRIPTION_INPUT_STYLE
-  });
+  }); 
 
-  var editorOptions = Object.keys(cmOptions);
-
+  var editorOptions = Object.keys(cmOptions);    
+  
   /** Editor preferences */
 
   /**
@@ -346,7 +350,7 @@ define(function(require, exports, module) {
         function(tx, error) {
           console.log("Could not create table 'undo_redo_history'")
         }
-      );
+      ); 
    
       tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId UNIQUE, int__CursorPos, int__ScrollPos)', [],
         function(tx, results) {
@@ -371,20 +375,23 @@ define(function(require, exports, module) {
                     "str__DocTxt"
                  ];
   
-  // Debugging: Display DB contents by sessionId
+  // Debugging: Prints specific row data to console from table in Db    
+  function printRowContentsDb (table, filePath, keyName) {
+      Db.transaction(function(tx) {
+                tx.executeSql('SELECT * FROM ? WHERE sessionId = ?', [table, filePath], function(tx, results) {
+                    console.log("success - " + table + " row printed.");
+                    console.log(results.rows.keyName);
+                }, function(tx, error) {
+                    console.log("Error: Could not print row from table '" + table + "'.");
+              });
+            });
+  }    
+    
+  // Debugging: Display DB contents by sessionId in console
   function printContentsDb (filePath) {
       try {
-        for (var i=0, len=tables.length-1; i<len; i++) {
-            tables.forEach(function (table) {
-                Db.transaction(function(tx) {
-                  tx.executeSql('DELETE FROM ? WHERE sessionId = ?', [tables[i], fullFilePath], function(tx, results) {
-                    console.log("success - " + tables[i] + " row printed.");
-                    console.log(results.rows[0].keyNames[i]);
-                  }, function(tx, error) {
-                    console.log("Error: Could not print row from table '" + tables[i] + "'.");
-                  });
-                });
-            });
+        for (var i=0, len=tables.length; i<len; i++) {
+            printRowContentsDb(tables[i], filePath, keyNames[i]);
         }
       } catch (err) {
           console.log(err);
@@ -392,7 +399,7 @@ define(function(require, exports, module) {
   }
     
   // Delete individual row from Db
-  function delRowDb (table, filePath) {
+  function delTableRowDb (table, filePath) {
         Db.transaction(function(tx) {
             tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"', [],
             function(tx, results) {
@@ -404,13 +411,12 @@ define(function(require, exports, module) {
     }
 
   // Remove specific rows from DB by sessionId
-  function delAllRowsDb (filePath) {
-      var tables = ["cursorpos_coords", "undo_redo_history", "unsaved_doc_changes"];
+  function delRowsDb (filePath) {
       try {
 	    var table;
         for (var i=0; i<3; i++) {
             table = tables[i];
-            delRowDb(table, filePath);
+            delTableRowDb(table, filePath);
         } 
       } catch (err) {
           console.log(err);
@@ -443,115 +449,168 @@ define(function(require, exports, module) {
       }
   }
 
+  // Updates specific row in a table in DB    
+  function updateTableRowDb (filePath, table, value, keyName) { 
+      if (typeof value === "object") {
+          value = JSON.stringify(value);
+      }
+          
+      Db.transaction(function (tx) { 
+          value = value.toString();
+          tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
+                function(tx, results) {
+                    console.log("Successfully inserted into " + table);
+                }, 
+                function(tx, error) {
+                    console.log("Could not insert into " + table);
+                    console.log(error); 
+                    if (error.code === 6) {
+                        tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value], 
+                        function(tx, results) { 
+                            console.log("UPDATED ROW IN " + table);
+                        }, function (tx, error) {
+                            console.log(error);
+                        });
+                    }
+                }
+          );
+      })
+  } 
+
   // This is the 'Save Change Data to DB' function
-  var sendChangeHistoryToDb = function(cursorPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
+  var sendChangeHistoryDb = function(cursorPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
     var values = [
                     cursorPos,
                     curHistoryObjStr,
                     currentTxtDeflated
                  ];
-
     if (!Db) {
-      console.log("Database error! No database loaded!");
+      console.log("Database error! No database loaded!"); 
     } else {
       try {
           console.log("Starting sync to db...");
-        Db.transaction(function (tx) { 
-
-            tx.executeSql('INSERT INTO cursorpos_coords (sessionId, int__CursorPos) VALUES (?, ?)', [fullFilePath, cursorPos], 
-                function(tx, results) {
-                    console.log("Successfully inserted into cursorpos_coords");
-                },
-                function(tx, error) {
-                    console.log("Could not insert into cursorpos_coords");
-                    console.log(error);
-                    if (error.code === 6) {
-                        tx.executeSql('UPDATE cursorpos_coords SET int__CursorPos=? WHERE sessionId=?', [cursorPos, fullFilePath], 
-                        function(tx, results) {
-                            console.log("UPDATED ROW IN cursorpos_coords");
-                        }, function (tx, error) {
-                            console.log(error);
-                        });
-                    }
-                }
-            );
           
-            tx.executeSql('INSERT INTO undo_redo_history (sessionId, str__DocHistory) VALUES (?, ?)', [fullFilePath, curHistoryObjStr], 
-                function(tx, results) {
-                    console.log("Successfully inserted into undo_redo_history");
-                },
-                function(tx, error) {
-                    console.log("Could not insert into undo_redo_history");
-                    console.log(error);
-                    if (error.code === 6) {
-                        tx.executeSql('UPDATE undo_redo_history SET str__DocHistory=? WHERE sessionId=?', [curHistoryObjStr, fullFilePath], 
-                        function(tx, results) {
-                            console.log("UPDATED ROW IN undo_redo_history");
-                        }, function (tx, error) {
-                            console.log(error);
-                        });
-                    }
-                }
-            );
-            
-            tx.executeSql('INSERT INTO unsaved_doc_changes (sessionId, str__DocTxt) VALUES (?, ?)', [fullFilePath, currentTxtDeflated], 
-                function(tx, results) {
-                    console.log("Successfully inserted into unsaved_doc_changes");
-                },
-                function(tx, error) {
-                    console.log("Could not insert into unsaved_doc_changes");
-                    console.log(error);
-                    if (error.code === 6) { 
-                        tx.executeSql('UPDATE unsaved_doc_changes SET str__DocTxt=? WHERE sessionId=?', [currentTxtDeflated, fullFilePath], 
-                        function(tx, results) {
-                            console.log("UPDATED ROW IN unsaved_doc_changes");
-                        }, function (tx, error) {
-                            console.log(error);
-                        });
-                    }
-                }
-            );
-        });
+          for (var i=0; i<3; i++) {
+              updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
+          } 
       } catch (err) {
-        console.log("Database error! ", err)
+        console.log("Database error! ", err);
       }
     };
 
   };
-
+    
   // This is the 'Load Change Data From DB' function
-  var getLoadChangeHistFromDb = function (fullFilePath) {
+  var loadChangeHistoryDb = function (fullFilePath) {
     if (!Db) {
       console.log("Database error! Did not load query result!")
     } else {
-      try {
-        var savedDocRefs = [], //cursorPos, chgHistory, savedDocTxt
-            curDocTxt = [];
-
-        for (var i=0, len=tables.length; i<len; i++) {
-            tables.forEach(function (table) {
+      try { 
+          console.log("TRYING TO SYNC...");
+          /*
+          var savedDocRefs = [], // <- cursorPos, chgHistory, savedDocTxt
+                        doc = DocumentManager.getOpenDocumentForPath(fullFilePath),
+                        curDocTxt = doc._masterEditor._codeMirror.getValue();
+        
                 Db.transaction(function(tx) {
-                  tx.executeSql('SELECT * FROM ? WHERE sessionId = ?', [tables[i], fullFilePath], function(tx, results) {
-                    console.log("Success: " + table + " fetched, loading data.");
-                    savedDocRefs.push(results.rows[0].keyNames[i]);
-                  }, function(tx, error) {
-                    console.log("Error: Could not grab rows from '" + table + "'.");
-                  });
+                        tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath], 
+                        function(tx, results) {
+                            console.log("Success: cursorpos_coords rows fetched--loading data.");
+
+                            if (results.rows.length > 0) {
+                                savedDocRefs.push(JSON.stringify(results.rows[0].int__CursorPos));
+                            }
+                            },  null
+                        );
+          
+                        tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath],
+                        function(tx, results) {
+                            console.log("Success: unsaved_doc_changes rows found, loading data.");
+                            if (results.rows.length > 0) {
+                                savedDocRefs.push(results.rows[0].str__DocTxt);
+
+                                //var savedDocTxtDecoded = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt));
+                                //console.log(savedDocTxtDecoded, curDocTxt) // <- curDocTxt opens old version still. Must change it to loadValue() version before checking here.
+                                //console.log(savedDocTxtDecoded === curDocTxt);
+                            }    
+                        },  null
+                    );
+                    
+                    tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',     [fullFilePath], 
+                      function(tx, results) {
+                        console.log("Success: undo_redo_history rows fetched--loading data.");
+                        
+                        if (results.rows.length > 0) {
+                            savedDocRefs.push(results.rows["0"].str__DocHistory);
+                        }
+                      }, null  
+                    ); 
+                    
+                    console.log(savedDocRefs);
+        })  
+          */
+ 
+        Db.transaction(function(tx) {    
+
+                asyncWaterfall([           
+                    function (callback) {
+                        var savedDocRefs = [], // <- cursorPos, chgHistory, savedDocTxt
+                        doc = DocumentManager.getOpenDocumentForPath(fullFilePath),
+                        curDocTxt = doc._masterEditor._codeMirror.getValue();
+                        
+                        tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath], 
+                        function(tx, results) {
+                            console.log("Success: cursorpos_coords rows fetched--loading data.");
+
+                            if (results.rows.length > 0) {
+                                savedDocRefs.push(JSON.stringify(results.rows[0].int__CursorPos));
+                            }
+                            },  null
+                        );
+                    
+                        callback(null, savedDocRefs);
+                  },
+                  function (savedDocRefs, callback) {
+                      
+                        tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [fullFilePath],
+                        function(tx, results) {
+                            console.log("Success: unsaved_doc_changes rows found, loading data.");
+                            if (results.rows.length > 0) {
+                                savedDocRefs.push(results.rows[0].str__DocTxt);
+
+                                //var savedDocTxtDecoded = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt));
+                                //console.log(savedDocTxtDecoded, curDocTxt) // <- curDocTxt opens old version still. Must change it to loadValue() version before checking here.
+                                //console.log(savedDocTxtDecoded === curDocTxt);
+                            }    
+                        },  null
+                    );  
+                    
+                    callback(null, savedDocRefs);
+                  },
+                  function (savedDocRefs, callback) {
+                      
+                    tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',     [fullFilePath], 
+                      function(tx, results) {
+                        console.log("Success: undo_redo_history rows fetched--loading data.");
+                        
+                        if (results.rows.length > 0) {
+                            savedDocRefs.push(results.rows["0"].str__DocHistory);
+                        }
+                      }, null  
+                    );
+                      
+                    callback(null, savedDocRefs);
+                  }
+                ], function (err, allHistoryDataArr) {
+                    console.log("allHistoryDataArr ", allHistoryDataArr);
+                    
+                    return allHistoryDataArr; 
                 });
             });
-        }
-         
-        console.log(savedDocRefs, curDocTxt);
-          
-        if (savedDocRefs[2] === curDocTxt) {
-            // Load only cursorPos, store everything in savedDocRefs once again
-            
-            //sendChangeHistoryToDb(savedDocRefs["0"], savedDocRefs[1], savedDocRefs[2], fullFilePath);
-        } else {
-            // Load docTxt, change history and cursorpos
-        }
+    
+        });
       } catch (err) {
-        console.log("Database Error! ", err);
+        console.log("Database Error! ", err); 
       }
     }
   }
@@ -650,7 +709,7 @@ define(function(require, exports, module) {
         } else {
           self.removeAllInlineWidgets();
         }
-      },
+      }, 
       "Home": "goLineLeftSmart",
       "Cmd-Left": "goLineLeftSmart",
       "End": "goLineRight",
@@ -658,7 +717,7 @@ define(function(require, exports, module) {
     };
 
     var currentOptions = this._currentOptions = _.zipObject(
-      editorOptions,
+      editorOptions, 
       _.map(editorOptions, function(prefName) {
         return self._getOption(prefName);
       })
@@ -1200,12 +1259,10 @@ define(function(require, exports, module) {
       curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
       result = new $.Deferred(),
       promise = result.promise();
- 
     try {
-      console.log("_captureUnsavedDocChanges working...")    
-      sendChangeHistoryToDb(cursorPos, currentTextObj, curTxtDeflated, fullPathToFile);
-      result.resolve(that);
-    } catch (err) {  
+      sendChangeHistoryDb(cursorPos, currentTextObj, curTxtDeflated, fullPathToFile);
+      result.reject();
+    } catch (err) {
       console.log(err);
       result.reject();
     }
@@ -1221,6 +1278,7 @@ define(function(require, exports, module) {
    *  - if we're a secondary editor, editor changes should be ignored if they were caused by us reacting
    *    to a Document change
    */
+    
   Editor.prototype._handleEditorChange = function(changeList) {
     var hotClose = PreferencesManager.get(HOT_CLOSE);
 
@@ -1240,7 +1298,7 @@ define(function(require, exports, module) {
       // FUTURE: Technically we should add a replaceRange() method to Document and go through
       // that instead of talking to its master editor directly. It's not clear yet exactly
       // what the right Document API would be, though.
-
+        console.log("A")
       if (hotClose) {
         // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
         _captureUnsavedDocChanges(this);
@@ -1258,8 +1316,9 @@ define(function(require, exports, module) {
     // we're the ground truth; nothing else to do, since Document listens directly to us
     // note: this change might have been a real edit made by the user, OR this might have
     // been a change synced from another editor
-
-    if (hotClose) {
+      console.log("B");
+      console.log("hotClose: " + hotClose);
+    if (hotClose) { 
       _captureUnsavedDocChanges(this);
     }
 
@@ -2325,7 +2384,7 @@ define(function(require, exports, module) {
     AnimationUtils.animateUsingClass(this._$messagePopover[0], "animateOpen").done(function() {
       // Make sure we still have a popover
       if (self._$messagePopover && self._$messagePopover.length > 0) {
-        self._$messagePopover.addClass("open");
+        self._$messagePopover.addClass("open"); 
 
         // Don't add scroll listeners until open so we don't get event
         // from scrolling cursor into view
@@ -3174,18 +3233,16 @@ define(function(require, exports, module) {
       _instances.forEach(function(editor) {
         editor._updateOption(prefName);
       });
-    });
+    }); 
   });
-
-  //wipeDb();
 
   // Define public API
   exports.Editor = Editor;
   exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
   exports.BOUNDARY_IGNORE_TOP = BOUNDARY_IGNORE_TOP;
   exports.Db = Db;
-  exports.delAllRowsDb = delAllRowsDb;
+  exports.delRowsDb = delRowsDb;
   exports.printContentsDb  = printContentsDb;
-  exports.sendChangeHistoryToDb  = sendChangeHistoryToDb;
-  exports.getLoadChangeHistFromDb = getLoadChangeHistFromDb;
+  exports.sendChangeHistoryDb = sendChangeHistoryDb;
+  exports.loadChangeHistoryDb = loadChangeHistoryDb;
 });
