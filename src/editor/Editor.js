@@ -527,8 +527,9 @@ define(function(require, exports, module) {
                                             savedDocRefs.push(results.rows[0].str__DocTxt);
 
                                             var savedDocTxt = results.rows[0].str__DocTxt, 
-                                                savedDocTxtDecoded = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt)),
                                                 curDocTxtEncoded = RawDeflate.deflate(He.encode(curDocTxt));
+                                            
+                                            // If current file opening is same as file in memory, handle case of that file simply being reopened
                                             
                                             if (savedDocTxt === curDocTxtEncoded) {
                                                 console.log("SAMPLES ARE EQUAL");
@@ -536,18 +537,32 @@ define(function(require, exports, module) {
                                                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?', [fullFilePath],
                                                 function(tx, results) {
                                                     console.log("Success: undo_redo_history rows fetched--loading data.");
-
+                                                        
                                                     if (results.rows.length > 0) {
                                                         savedDocRefs.push(results.rows["0"].str__DocHistory);
-
-                                                        console.log("NOOP");
+                                                
+                                                        var savedCursorPos = JSON.parse(savedDocRefs[0]),
+                                                            compressedHistory = savedDocRefs[1].toString();
+                                                        
+                                                       // Load saved history into codeMirror
+                                                       console.log(doc); 
+                                                       
+                                                       Editor.codeMirrorRef.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
+                                                       // doc._masterEditor._codeMirror.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
+                    
+                                                        // Move cursor from "{'Line': 0, 'ch': 0 ...}" back to its prior position
+                    
+                                                       EditorManager.getCurrentFullEditor().setCursorPos(savedCursorPos.line, savedCursorPos.ch, true);
+                                                        // doc._file.setCursorPos(savedCursorPos.line, savedCursorPos.ch, true); 
+                                                         
+                                                        sendChangeHistoryDb(savedDocRefs[0], savedDocRefs[2], savedDocRefs[1], fullFilePath);
                                                     }
                                                 },
                                                 function(tx, error) {
                                                     console.log(error);
                                                 }
                                             );
-                                            } else {
+                                            } else {  // Load unsaved changes into memory
                                                 console.log("SAMPLES DO NOT MATCH");
                                                 
                                                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',       [fullFilePath],
@@ -556,9 +571,22 @@ define(function(require, exports, module) {
 
                                                         if (results.rows.length > 0) {
                                                             savedDocRefs.push(results.rows["0"].str__DocHistory);
+                                                
+                                                            var savedCursorPos =   JSON.parse(savedDocRefs[0]),
+                                                                compressedHistory = savedDocRefs[2].toString(),
+                                                                compressedDocTxt = savedDocRefs[1].toString();
+                                                                doc._masterEditor._codeMirror.setValue(He.decode(RawDeflate.inflate(compressedDocTxt)));
+
+                                                            // Load saved history into codeMirror
+                                                            Editor.codeMirrorRef.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
                                                             
-                                                            console.log("DO STUFF WITH SAVEDDOCREFS HERE:");
-                                                            console.log(savedDocRefs);
+                                                            // doc._masterEditor._codeMirror.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
+                    
+                                                            // Move cursor from current "{'Line': 0, 'ch': 0 ...}" position back to saved position
+                                                           EditorManager.getCurrentFullEditor().setCursorPos(savedCursorPos.line, savedCursorPos.ch, true);
+                                                            //doc._file.setCursorPos(savedCursorPos.line, savedCursorPos.ch, true); 
+                                                            
+                                                            sendChangeHistoryDb(savedDocRefs[0], savedDocRefs[2], savedDocRefs[1], fullFilePath);
                                                         }
                                                     },
                                                     function(tx, error) {
