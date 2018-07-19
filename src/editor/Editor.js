@@ -167,6 +167,8 @@ define(function(require, exports, module) {
         description: Strings.DESCRIPTION_HOT_CLOSE
     });
 
+    var hotClose = PreferencesManager.get(HOT_CLOSE);
+    
     // CodeMirror, html mode, set some tags do not close automatically.
     // We do not initialize "dontCloseTags" because otherwise we would overwrite the default behavior of CodeMirror.
     PreferencesManager.definePreference(CLOSE_TAGS, "object", {
@@ -352,12 +354,21 @@ define(function(require, exports, module) {
                 }
             );
 
-            tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId UNIQUE, int__CursorPos, int__ScrollPos)', [],
+            tx.executeSql('CREATE TABLE IF NOT EXISTS cursorpos_coords (id INTEGER PRIMARY KEY, sessionId UNIQUE, int__CursorPos)', [],
                 function(tx, results) {
                     console.log("Successfully created table 'cursorpos_coords'")
                 },
                 function(tx, error) {
                     console.log("Could not create table 'cursorpos_coords'")
+                }
+            );
+            
+            tx.executeSql('CREATE TABLE IF NOT EXISTS scrollpos_coords (id INTEGER PRIMARY KEY, sessionId UNIQUE, int__ScrollPos)', [],
+                function(tx, results) {
+                    console.log("Successfully created table 'scrollpos_coords'")
+                },
+                function(tx, error) {
+                    console.log("Could not create table 'scrollpos_coords'")
                 }
             );
         });
@@ -366,11 +377,13 @@ define(function(require, exports, module) {
     // Static Db References    
     var tables = [
             "cursorpos_coords",
+            "scrollpos_coords",
             "undo_redo_history",
             "unsaved_doc_changes"
         ],
         keyNames = [
             "int__CursorPos",
+            "int__ScrollPos",
             "str__DocHistory",
             "str__DocTxt"
         ];
@@ -378,10 +391,15 @@ define(function(require, exports, module) {
     // Debugging: Prints specific row data to console from table in Db    
     function printRowContentsDb(table, filePath, keyName) {
         Db.transaction(function(tx) {
-            tx.executeSql('SELECT * FROM ? WHERE sessionId = ?', [table, filePath], function(tx, results) {
-                console.log("success - " + table + " row printed.");
-                console.log(results.rows.keyName);
+            tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?', [filePath], function(tx, results) {
+                console.log("success - " + table + " row printed for " + keyName + ".");
+                if (keyName === "str__DocTxt") {
+                    console.log(He.decode(RawDeflate.inflate(results.rows[0][keyName])));
+                } else {
+                    console.log(results.rows[0][keyName]);
+                }
             }, function(tx, error) {
+                console.log(error);
                 console.log("Error: Could not print row from table '" + table + "'.");
             });
         });
@@ -480,21 +498,24 @@ define(function(require, exports, module) {
     }
 
     // This is the 'Save Change Data to DB' function
-    var sendChangeHistoryDb = function(cursorPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
+    var sendChangeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
         var values = [
             cursorPos,
+            scrollPos,
             curHistoryObjStr,
             currentTxtDeflated
         ];
+        
         if (!Db) {
             console.log("Database error! No database loaded!");
         } else {
             try {
                 console.log("Starting sync to db...");
 
-                for (var i = 0; i < 3; i++) {
+                for (var i = 0; i < 4; i++) {
                     updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
                 }
+                // printContentsDb(fullFilePath);
             } catch (err) {
                 console.log("Database error! ", err);
             }
@@ -503,17 +524,18 @@ define(function(require, exports, module) {
     };
 
     // This is the 'Load Change Data From DB' function
-    var loadChangeHistoryDb = function(fullFilePath) {
+    var loadChangeHistoryDb = function(fullFilePath, that) {
+        /*
         if (!Db) {
             console.log("Database error! Did not load query result!")
         } else {
             try {
-                console.log("TRYING TO SYNC...");
+                console.log("TRYING TO SYNC... " + that);
                 Db.transaction(function(tx) {
                     var savedDocRefs = [], // <- cursorPos, chgHistory, savedDocTxt
                         doc = DocumentManager.getOpenDocumentForPath(fullFilePath),
                         curDocTxt = doc._masterEditor._codeMirror.getValue();
-
+                
                     tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [fullFilePath],
                         function(tx, results) {
                             console.log("Success: cursorpos_coords rows fetched--loading data.");
@@ -545,15 +567,11 @@ define(function(require, exports, module) {
                                                             compressedHistory = savedDocRefs[1].toString();
                                                         
                                                        // Load saved history into codeMirror
-                                                       console.log(doc); 
-                                                       
                                                        Editor.codeMirrorRef.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
-                                                       // doc._masterEditor._codeMirror.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
                     
                                                         // Move cursor from "{'Line': 0, 'ch': 0 ...}" back to its prior position
                     
                                                        EditorManager.getCurrentFullEditor().setCursorPos(savedCursorPos.line, savedCursorPos.ch, true);
-                                                        // doc._file.setCursorPos(savedCursorPos.line, savedCursorPos.ch, true); 
                                                          
                                                         sendChangeHistoryDb(savedDocRefs[0], savedDocRefs[2], savedDocRefs[1], fullFilePath);
                                                     }
@@ -578,14 +596,11 @@ define(function(require, exports, module) {
                                                                 doc._masterEditor._codeMirror.setValue(He.decode(RawDeflate.inflate(compressedDocTxt)));
 
                                                             // Load saved history into codeMirror
-                                                            Editor.codeMirrorRef.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
-                                                            
-                                                            // doc._masterEditor._codeMirror.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
+                                                            //doc._masterEditor._codeMirror.setHistory(He.decode(RawDeflate.inflate(compressedHistory)));
                     
                                                             // Move cursor from current "{'Line': 0, 'ch': 0 ...}" position back to saved position
-                                                           EditorManager.getCurrentFullEditor().setCursorPos(savedCursorPos.line, savedCursorPos.ch, true);
-                                                            //doc._file.setCursorPos(savedCursorPos.line, savedCursorPos.ch, true); 
-                                                            
+                                                            console.log(doc);
+                                                            EditorManager.getCurrentFullEditor().setCursorPos(savedCursorPos.line, savedCursorPos.ch, true);
                                                             sendChangeHistoryDb(savedDocRefs[0], savedDocRefs[2], savedDocRefs[1], fullFilePath);
                                                         }
                                                     },
@@ -614,6 +629,7 @@ define(function(require, exports, module) {
                 console.log("Database Error! ", err);
             }
         }
+        */
     }
 
     /**
@@ -636,11 +652,12 @@ define(function(require, exports, module) {
      * @param {!Object} options If specified, contains editor options that can be passed to CodeMirror
      */
     function Editor(document, makeMasterEditor, container, range, options) {
-        var self = this;
+        var self     = this,
+            hotClose = PreferencesManager.get(HOT_CLOSE);
 
         var isReadOnly = (options && options.isReadOnly) || !document.editable;
 
-        _instances.push(this);
+        _instances.push(this); 
 
         // Attach to document: add ref & handlers
         this.document = document;
@@ -797,12 +814,62 @@ define(function(require, exports, module) {
         // Initially populate with text. This will send a spurious change event, so need to make
         // sure this is understood as a 'sync from document' case, not a genuine edit
         this._duringSync = true;
-        this._resetText(document.getText());
+        
+        var that = this,
+            docText = document.getText();
+        
+        if (hotClose) {  // load docTxt from DB here
+            Db.transaction(function (tx, self) {
+                tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [document.file._path],
+                function (tx, results) {
+                    console.log("Success: unsaved_doc_changes rows are being found, loading data next.");
+
+                    console.log("before A");
+                    if (results.rows.length > 0) {
+                        console.log("A");
+                        
+                        var savedDocTxt = results.rows[0].str__DocTxt,
+                            savedDocTextDecoded = He.decode(RawDeflate.inflate(savedDocTxt));
+                        
+                        that._resetText(savedDocTextDecoded);          
+                    } else {  // Use cur doc text if no unsaved changes were found in DB
+                        console.log("E");
+                        that._resetText(docText);
+                    }
+                })
+            })
+        } else {  // !hotClose
+            console.log("F");
+            this._resetText(document.getText());
+        }
+        
         this._duringSync = false;
 
         if (range) {
             this._updateHiddenLines();
-            this.setCursorPos(range.startLine, 0);
+
+            if (hotClose) {  // Load last cursorPos from DB
+                Db.transaction(function(tx) {
+                    tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [document.file._path],
+                    function(tx, results) {
+                        console.log("Success: cursorpos_coords rows being fetched--next, loading data.");
+                        
+                        if (results.rows.length > 0) {
+                            var cursorPosLn = JSON.stringify(results.rows[0].int__CursorPos.line),
+                                cursorPosCh =
+                            JSON.stringify(results.rows[0].int__CursorPos.ch);
+                            
+                            that.setCursorPos(cursorPosLn, cursorPosCh, true);
+                        } else {  // Use default functionality instead
+                            that.setCursorPos(range.startLine, 0);
+                        }
+                    }, function (tx, error) {
+                        console.log(error);
+                    })
+                });
+            } else {
+                that.setCursorPos(range.startLine, 0);
+            }
         }
 
         // Now that we're fully initialized, we can point the document back at us if needed
@@ -1256,21 +1323,33 @@ define(function(require, exports, module) {
             currentTxt = that._codeMirror.getValue(),
             fullPathToFile = that.document.file._path,
             cursorPos = that.getCursorPos(),
+            scrollPos = that.getScrollPos(),
             docTxtSpecialCharsEncoded = He.encode(currentTxt),
             curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
             result = new $.Deferred(),
             promise = result.promise();
         try {
-            sendChangeHistoryDb(cursorPos, currentTextObj, curTxtDeflated, fullPathToFile);
-            result.reject();
+            sendChangeHistoryDb(cursorPos, scrollPos, currentTextObj, curTxtDeflated, fullPathToFile);
         } catch (err) {
             console.log(err);
-            result.reject();
         }
-
+        result.reject();
+        
         return promise;
     }
-
+    
+    // Debounce editor sync of unsaved changes to DB
+    var timer = null;
+    function debouncedDbSync(fn, delay, arg, printCb, that) {
+        return function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                fn(arg);
+                printCb(that.document.file._path);
+            }, delay || 1250);
+        };
+    };
+    
     /**
      * Responds to changes in the CodeMirror editor's text, syncing the changes to the Document.
      * There are several cases where we want to ignore a CodeMirror change:
@@ -1279,10 +1358,7 @@ define(function(require, exports, module) {
      *  - if we're a secondary editor, editor changes should be ignored if they were caused by us reacting
      *    to a Document change
      */
-
     Editor.prototype._handleEditorChange = function(changeList) {
-        var hotClose = PreferencesManager.get(HOT_CLOSE);
-
         // we're currently syncing from the Document, so don't echo back TO the Document
         if (this._duringSync) {
             return;
@@ -1299,10 +1375,13 @@ define(function(require, exports, module) {
             // FUTURE: Technically we should add a replaceRange() method to Document and go through
             // that instead of talking to its master editor directly. It's not clear yet exactly
             // what the right Document API would be, though.
-            console.log("A")
+            
             if (hotClose) {
                 // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                _captureUnsavedDocChanges(this);
+                var syncChangesToDb = debouncedDbSync(_captureUnsavedDocChanges, null, this, printContentsDb, this);
+                
+                syncChangesToDb();
+                // printContentsDb(this.document.file._path);
             }
 
             this._duringSync = true;
@@ -1317,10 +1396,11 @@ define(function(require, exports, module) {
         // we're the ground truth; nothing else to do, since Document listens directly to us
         // note: this change might have been a real edit made by the user, OR this might have
         // been a change synced from another editor
-        console.log("B");
-        console.log("hotClose: " + hotClose);
+        
         if (hotClose) {
-            _captureUnsavedDocChanges(this);
+            var syncChangeToDb = debouncedDbSync(_captureUnsavedDocChanges, null, this, printContentsDb, this);
+            
+            syncChangeToDb();
         }
 
         // The "editorChange" event is mostly for the use of the CodeHintManager.
@@ -1461,8 +1541,9 @@ define(function(require, exports, module) {
      * Semi-private: only Document should call this.
      * @param {!string} text
      */
-    Editor.prototype._resetText = function(text) { // nyteksf
-        var currentText = this._codeMirror.getValue();
+    Editor.prototype._resetText = function (text) {
+        var currentText = this._codeMirror.getValue(),
+            that = this;
 
         // compare with ignoring line-endings, issue #11826
         var textLF = text ? text.replace(/(\r\n|\r|\n)/g, "\n") : null;
@@ -1480,16 +1561,69 @@ define(function(require, exports, module) {
         // This *will* fire a change event, but we clear the undo immediately afterward
         this._codeMirror.setValue(text);
         this._codeMirror.refresh();
-
-        // Make sure we can't undo back to the empty state before setValue(), and mark
-        // the document clean.
+        
+        // Make sure we can't undo back to the empty state before setValue()
         this._codeMirror.clearHistory();
-        this._codeMirror.markClean();
+        
+        if (hotClose) {  // Attempt to load any unsaved changes
+            Db.transaction(function (tx) {
+                // Restore saved undo/redo history from DB
+                tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
+                    function(tx, results) {
+                        console.log("Success: undo_redo_history rows fetched--loading data.");
+                                                        
+                        if (results.rows.length > 0) {
+                            that._codeMirror.setHistory(JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory))));
+                        } else {
+                            // Mark the document clean.
+                            that._codeMirror.markClean();
+                        } 
+                    }, function (tx, error) {
+                        console.log(error);
+                    }
+                );
+                
+                tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',           [that.document.file._path],
+                    function(tx, results) {
+                        console.log("Success: cursorpos_coords rows fetched--loading data.");
+                        if (results.rows.length > 0) {
+                    
+                            // Restore cursor position from DB if possible
+                            var savedCursorPos = JSON.parse(results.rows[0].int__CursorPos);
+                            
+                            that.setCursorPos(savedCursorPos);
+                        } else {
+                            that.setCursorPos(cursorPos);
+                        } 
+                    }, function (tx, error) {
+                        console.log(error);
+                    }
+                );
+                
+                tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',           [that.document.file._path],
+                    function(tx, results) {
+                        console.log("Success: scrollpos_coords rows fetched--loading data.");
+                        if (results.rows.length > 0) {
+                            // Restore cursor position from DB if possible
+                            var savedScrollPos = JSON.parse(results.rows[0].int__ScrollPos);
+                            that.setScrollPos(savedScrollPos.x, savedScrollPos.y);
+                        } else {
+                            that.setScrollPos(scrollPos.x, scrollPos.y);
+                        } 
+                    }, function (tx, error) {
+                        console.log(error);
+                    }
+                );
+            });
+        } else {
+            // Mark the document clean.
+            this._codeMirror.markClean();
 
-        // restore cursor and scroll positions
-        this.setCursorPos(cursorPos);
-        this.setScrollPos(scrollPos.x, scrollPos.y);
-
+            // Restore cursor and scroll positions
+            this.setCursorPos(cursorPos);
+            this.setScrollPos(scrollPos.x, scrollPos.y);
+        }
+        
         PerfUtils.addMeasurement(perfTimerName);
     };
 
