@@ -61,7 +61,6 @@ define(function (require, exports, module) {
         Db                  = require("editor/Editor").Db,
         delRowsDb           = require("editor/Editor").delRowsDb,
         printContentsDb     = require("editor/Editor").printContentsDb,
-        loadChangeHistoryDb = require("editor/Editor").loadChangeHistoryDb,
         sendChangeHistoryDb = require("editor/Editor").sendChangeHistoryDb,
         _                   = require("thirdparty/lodash"),
         CompressionUtils    = require("thirdparty/rawinflate"),
@@ -367,11 +366,8 @@ define(function (require, exports, module) {
             // A: SEEMS SO!
             // STRATEGY: If (hotClose), block below from running.
             // AND THEN... Below, run all DB queries, AND THEN invoke result.resolve(file) // on modded file. 
-            if (hotClose) {
-                console.log("DOWNLOADING HISTORY FOR " + fullPath);
-                //loadChangeHistoryDb(fullPath, file);
-                // TEMP FOR TESTING:
-                MainViewManager._open(paneId, file, options)
+        
+            MainViewManager._open(paneId, file, options)
                 .done(function () {
                     result.resolve(file);
                 })
@@ -379,16 +375,6 @@ define(function (require, exports, module) {
                     _showErrorAndCleanUp(fileError, fullPath);
                     result.reject();
                 });
-            } else {
-                MainViewManager._open(paneId, file, options)
-                .done(function () {
-                    result.resolve(file);
-                })
-                .fail(function (fileError) {
-                    _showErrorAndCleanUp(fileError, fullPath);
-                    result.reject();
-                });
-            }
         }
 
         return result.promise();
@@ -528,31 +514,26 @@ define(function (require, exports, module) {
                 }
                 result.resolve(file);
                 
-                if (!hotClose) {
-                    // If a line and column number were given, position the editor accordingly.
-                    if (fileInfo.line !== null) {
+                if (fileInfo.line !== null) {
                         if (fileInfo.column === null || (fileInfo.column <= 0)) {
                             fileInfo.column = 1;
                         }
-                    
+                    }
+            
+                if (!hotClose) {
+                    // If a line and column number were given, position the editor accordingly.
+                    if (fileInfo.line !== null) {
                         // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
                         EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
                                                                         fileInfo.column - 1,
                                                                         true);
                     }
-                    result.resolve(file);
+                    
+                    result.resolve(file);        
                 } else {
-                    /*
-                    if (fileInfo.line !== null) {
-                        if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                            fileInfo.column = 1;
-                        }
-                    }
                     
                     result.resolve(file);
-                */
                 } 
-                
             })
             .fail(function () {
                 result.reject();
@@ -590,17 +571,6 @@ define(function (require, exports, module) {
                 //  then we need to resolve that to a document.
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
-                var pathToFile = file.fullPath,
-                    doc = DocumentManager.getOpenDocumentForPath(pathToFile),
-                    parsedHistory,
-                    docTxtToInflate,
-                    docTxtDecodedChars; 
-
-            /*
-                if (hotClose) {
-                    
-                }
-            */
                 result.resolve(doc);
                 
             })
