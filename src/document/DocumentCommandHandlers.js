@@ -362,11 +362,7 @@ define(function (require, exports, module) {
                     file._encoding = encoding[fullPath];
                 }
             }
-            // Q: CAN WE INJECT MODDED FILE HERE? -nyteksf
-            // A: SEEMS SO!
-            // STRATEGY: If (hotClose), block below from running.
-            // AND THEN... Below, run all DB queries, AND THEN invoke result.resolve(file) // on modded file. 
-        
+            
             MainViewManager._open(paneId, file, options)
                 .done(function () {
                     result.resolve(file);
@@ -404,7 +400,7 @@ define(function (require, exports, module) {
             // Create placeholder deferred
             result = new $.Deferred();
 
-            //first time through, default to the current project path
+            // first time through, default to the current project path
             if (!_defaultOpenDialogFullPath) {
                 _defaultOpenDialogFullPath = ProjectManager.getProjectRoot().fullPath;
             }
@@ -436,7 +432,7 @@ define(function (require, exports, module) {
                     }
                 }
             });
-        } else { // STOP THIS BELOW TO FIX PROBLEM?
+        } else {
             result = _doOpen(fullPath, silent, paneId, options);
         }
 
@@ -528,11 +524,11 @@ define(function (require, exports, module) {
                                                                         fileInfo.column - 1,
                                                                         true);
                     }
-                    
-                    result.resolve(file);        
-                } else {
-                    
                     result.resolve(file);
+                    
+                } else {
+                    result.resolve(file);
+                
                 } 
             })
             .fail(function () {
@@ -571,6 +567,7 @@ define(function (require, exports, module) {
                 //  then we need to resolve that to a document.
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
+                var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
                 result.resolve(doc);
                 
             })
@@ -771,7 +768,7 @@ define(function (require, exports, module) {
      * @param {boolean=} force Ignore CONTENTS_MODIFIED errors from the FileSystem
      * @return {$.Promise} a promise that is resolved with the File of docToSave (to mirror
      *   the API of _doSaveAs()). Rejected in case of IO error (after error dialog dismissed).
-     */  
+     */ 
     function doSave(docToSave, force) {
         var result = new $.Deferred(),
             file = docToSave.file;
@@ -1864,12 +1861,13 @@ define(function (require, exports, module) {
     } else if (brackets.platform === "mac") {
         showInOS    = Strings.CMD_SHOW_IN_FINDER;
     }
-
+    
+    exports.doSave = doSave;
+    
     // Define public API
     exports.showFileOpenError = showFileOpenError;
     exports.APP_QUIT_CANCELLED = APP_QUIT_CANCELLED;
     
-
     // Deprecated commands
     CommandManager.register(Strings.CMD_ADD_TO_WORKING_SET,          Commands.FILE_ADD_TO_WORKING_SET,        handleFileAddToWorkingSet);
     CommandManager.register(Strings.CMD_FILE_OPEN,                   Commands.FILE_OPEN,                      handleDocumentOpen);

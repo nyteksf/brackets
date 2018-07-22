@@ -342,5 +342,4 @@ define(function (require, exports, module) {
     EventDispatcher.on_duringInit(DocumentManager, "dirtyFlagChange", _dirtyFlagChangeHandler);
 
     exports.InlineTextEditor = InlineTextEditor;
-
 });
