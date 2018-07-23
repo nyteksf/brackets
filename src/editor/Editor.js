@@ -519,8 +519,8 @@ define(function(require, exports, module) {
                     } else {  // Use cur doc text if no unsaved changes were found in DB
                         that._resetText(docText, that);
                     }
-                })
-            })
+                });
+            });
         } else {  // !hotClose
             this._resetText(document.getText(), this);
         }
@@ -545,7 +545,7 @@ define(function(require, exports, module) {
                         }
                     }, function (tx, error) {
                         console.log(error);
-                    })
+                    });
                 });
             } else {
                 that.setCursorPos(range.startLine, 0);
