@@ -503,19 +503,19 @@ define(function(require, exports, module) {
         // Initially populate with text. This will send a spurious change event, so need to make
         // sure this is understood as a 'sync from document' case, not a genuine edit
         this._duringSync = true;
-        
+
         var that = this,
             docText = document.getText();
-        
+
         if (hotClose) {  // Load docTxt from DB here if possible
             Db.database.transaction(function (tx, self) {
                 tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [document.file._path],
                 function (tx, results) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
-                            savedDocTextDecoded = He.decode(RawDeflate.inflate(savedDocTxt));
-                    
-                        that._resetText(savedDocTextDecoded, that);          
+                            savedDocTextDecoded = He.decode(CompressionUtils.RawDeflate.inflate(savedDocTxt));
+
+                        that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
                         that._resetText(docText, that);
                     }
@@ -524,7 +524,7 @@ define(function(require, exports, module) {
         } else {  // !hotClose
             this._resetText(document.getText(), this);
         }
-        
+
         this._duringSync = false;
 
         if (range) {
@@ -999,13 +999,13 @@ define(function(require, exports, module) {
     function _captureUnsavedDocChanges(that) {
         // Extract latest change history
         var curRawTxtObj = He.encode(JSON.stringify(that._codeMirror.getHistory())),
-            currentTextObj = RawDeflate.deflate(curRawTxtObj),
+            currentTextObj = CompressionUtils.RawDeflate.deflate(curRawTxtObj),
             currentTxt = that._codeMirror.getValue(),
             fullPathToFile = that.document.file._path,
             cursorPos = that.getCursorPos(),
             scrollPos = that.getScrollPos(),
             docTxtSpecialCharsEncoded = He.encode(currentTxt),
-            curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
+            curTxtDeflated = CompressionUtils.RawDeflate.deflate(docTxtSpecialCharsEncoded),
             result = new $.Deferred(),
             promise = result.promise();
         try {
@@ -1236,43 +1236,43 @@ define(function(require, exports, module) {
         // This *will* fire a change event, but we clear the undo immediately afterward
         that._codeMirror.setValue(text);
         that._codeMirror.refresh();
-        
+
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();
-        
+
         if (hotClose) {  // Attempt to load any unsaved changes
             Db.database.transaction(function (tx) {
                 // Restore saved undo/redo history from DB
                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
-                        
+
                         if (results.rows.length > 0) {
-                            that._codeMirror.setHistory(JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory))));
+                            that._codeMirror.setHistory(JSON.parse(He.decode(CompressionUtils.RawDeflate.inflate(results.rows["0"].str__DocHistory))));
                         } else {
                             // Mark the document clean.
                             that._codeMirror.markClean();
-                        } 
+                        }
                     }, function (tx, error) {
                         console.log(error);
                     }
                 );
-                
+
                 tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
-                        
+
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
                             var savedCursorPos = JSON.parse(results.rows[0].int__CursorPos);
-                            
+
                             that.setCursorPos(savedCursorPos);
                         } else {
                             that.setCursorPos(cursorPos);
-                        } 
+                        }
                     }, function (tx, error) {
                         console.log(error);
                     }
                 );
-                
+
                 tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {

@@ -129,7 +129,7 @@ define(function (require, exports, module) {
         database.transaction(function (tx) {
             tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?', [filePath], function (tx, results) {
                 if (keyName === "str__DocTxt") {
-                    console.log(He.decode(RawDeflate.inflate(results.rows[0][keyName])));
+                    console.log(He.decode(CompressionUtils.RawDeflate.inflate(results.rows[0][keyName])));
                 } else {
                     console.log(results.rows[0][keyName]);
                 }
@@ -265,13 +265,13 @@ define(function (require, exports, module) {
     function captureUnsavedDocChanges(that) {
         // Extract latest change history
         var curRawTxtObj = He.encode(JSON.stringify(that._codeMirror.getHistory())),
-            currentTextObj = RawDeflate.deflate(curRawTxtObj),
+            currentTextObj = CompressionUtils.RawDeflate.deflate(curRawTxtObj),
             currentTxt = that._codeMirror.getValue(),
             fullPathToFile = that.document.file._path,
             cursorPos = that.getCursorPos(),
             scrollPos = that.getScrollPos(),
             docTxtSpecialCharsEncoded = He.encode(currentTxt),
-            curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
+            curTxtDeflated = CompressionUtils.RawDeflate.deflate(docTxtSpecialCharsEncoded),
             result = new $.Deferred(),
             promise = result.promise();
         try {
