@@ -288,4 +288,5 @@ define(function (require, exports, module) {
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
     exports.sendChangeHistoryDb = sendChangeHistoryDb;
     exports.delRowsDb = delRowsDb;
+    exports.debouncedDbSync = debouncedDbSync;
 });

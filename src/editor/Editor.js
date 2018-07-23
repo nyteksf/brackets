@@ -503,28 +503,28 @@ define(function(require, exports, module) {
         // Initially populate with text. This will send a spurious change event, so need to make
         // sure this is understood as a 'sync from document' case, not a genuine edit
         this._duringSync = true;
-
+        
         var that = this,
             docText = document.getText();
-
+        
         if (hotClose) {  // Load docTxt from DB here if possible
             Db.database.transaction(function (tx, self) {
                 tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [document.file._path],
                 function (tx, results) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
-                            savedDocTextDecoded = He.decode(CompressionUtils.RawDeflate.inflate(savedDocTxt));
-
-                        that._resetText(savedDocTextDecoded, that);
+                            savedDocTextDecoded = He.decode(RawDeflate.inflate(savedDocTxt));
+                    
+                        that._resetText(savedDocTextDecoded, that);          
                     } else {  // Use cur doc text if no unsaved changes were found in DB
                         that._resetText(docText, that);
                     }
-                });
-            });
+                })
+            })
         } else {  // !hotClose
             this._resetText(document.getText(), this);
         }
-
+        
         this._duringSync = false;
 
         if (range) {
@@ -545,7 +545,7 @@ define(function(require, exports, module) {
                         }
                     }, function (tx, error) {
                         console.log(error);
-                    });
+                    })
                 });
             } else {
                 that.setCursorPos(range.startLine, 0);
@@ -993,42 +993,6 @@ define(function(require, exports, module) {
         }
     }
 
-    /** 
-     * Stashes a copy of the current document text, history, etc. in localStorage
-     */
-    function _captureUnsavedDocChanges(that) {
-        // Extract latest change history
-        var curRawTxtObj = He.encode(JSON.stringify(that._codeMirror.getHistory())),
-            currentTextObj = CompressionUtils.RawDeflate.deflate(curRawTxtObj),
-            currentTxt = that._codeMirror.getValue(),
-            fullPathToFile = that.document.file._path,
-            cursorPos = that.getCursorPos(),
-            scrollPos = that.getScrollPos(),
-            docTxtSpecialCharsEncoded = He.encode(currentTxt),
-            curTxtDeflated = CompressionUtils.RawDeflate.deflate(docTxtSpecialCharsEncoded),
-            result = new $.Deferred(),
-            promise = result.promise();
-        try {
-            Db.sendChangeHistoryDb(cursorPos, scrollPos, currentTextObj, curTxtDeflated, fullPathToFile);
-        } catch (err) {
-            console.log(err);
-        }
-        result.reject();
-        
-        return promise;
-    }
-    
-    // Debounce editor sync of unsaved changes to DB
-    var timer = null;
-    function debouncedDbSync(fn, delay, arg) {
-        return function () {
-            clearTimeout(timer);
-            timer = setTimeout(function () {
-                fn(arg);
-            }, delay || 1250);
-        };
-    };
-    
     /**
      * Responds to changes in the CodeMirror editor's text, syncing the changes to the Document.
      * There are several cases where we want to ignore a CodeMirror change:
@@ -1057,7 +1021,7 @@ define(function(require, exports, module) {
             
             if (hotClose) {
                 // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                var syncChangesToDb = debouncedDbSync(null, this);
+                var syncChangesToDb = Db.debouncedDbSync(null, this);
                 syncChangesToDb();
             }
 
@@ -1075,7 +1039,7 @@ define(function(require, exports, module) {
         // been a change synced from another editor
         
         if (hotClose) {
-            var syncChangeToDb = debouncedDbSync(_captureUnsavedDocChanges, null, this);
+            var syncChangeToDb = Db.debouncedDbSync(null, this);
             syncChangeToDb();
         }
 
@@ -1236,43 +1200,43 @@ define(function(require, exports, module) {
         // This *will* fire a change event, but we clear the undo immediately afterward
         that._codeMirror.setValue(text);
         that._codeMirror.refresh();
-
+        
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();
-
+        
         if (hotClose) {  // Attempt to load any unsaved changes
             Db.database.transaction(function (tx) {
                 // Restore saved undo/redo history from DB
                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
-
+                        
                         if (results.rows.length > 0) {
-                            that._codeMirror.setHistory(JSON.parse(He.decode(CompressionUtils.RawDeflate.inflate(results.rows["0"].str__DocHistory))));
+                            that._codeMirror.setHistory(JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory))));
                         } else {
                             // Mark the document clean.
                             that._codeMirror.markClean();
-                        }
+                        } 
                     }, function (tx, error) {
                         console.log(error);
                     }
                 );
-
+                
                 tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
-
+                        
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
                             var savedCursorPos = JSON.parse(results.rows[0].int__CursorPos);
-
+                            
                             that.setCursorPos(savedCursorPos);
                         } else {
                             that.setCursorPos(cursorPos);
-                        }
+                        } 
                     }, function (tx, error) {
                         console.log(error);
                     }
                 );
-
+                
                 tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
