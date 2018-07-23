@@ -58,10 +58,7 @@ define(function (require, exports, module) {
         StatusBar           = require("widgets/StatusBar"),
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
-        Db                  = require("editor/Editor").Db,
-        delRowsDb           = require("editor/Editor").delRowsDb,
-        printContentsDb     = require("editor/Editor").printContentsDb,
-        sendChangeHistoryDb = require("editor/Editor").sendChangeHistoryDb,
+        Db                  = require("editor/Db"),
         _                   = require("thirdparty/lodash"),
         CompressionUtils    = require("thirdparty/rawinflate"),
         CompressionUtils    = require("thirdparty/rawdeflate"),
@@ -147,7 +144,7 @@ define(function (require, exports, module) {
     EventDispatcher.makeEventDispatcher(exports);
     
     /**
-     * Event triggered on File change when pref is set to 'true'
+     * Sync to db event triggered on file change when pref is set to 'true'
      */
     var HOT_CLOSE = "hotClose",
         hotClose = PreferencesManager.get(HOT_CLOSE);
@@ -774,7 +771,7 @@ define(function (require, exports, module) {
             file = docToSave.file;
 
         if (hotClose) {
-            delRowsDb(file._path);
+            Db.delRowsDb(file._path);
         }
 
         function handleError(error) {
@@ -1527,7 +1524,7 @@ define(function (require, exports, module) {
     function handleFileRename() {
         if (hotClose) {
             var fileName = MainViewManager.getCurrentlyViewedFile();
-            delRowsDb(fileName._path);
+            Db.delRowsDb(fileName._path);
         }
         
         // Prefer selected sidebar item (which could be a folder)
@@ -1658,8 +1655,7 @@ define(function (require, exports, module) {
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
                     if (hotClose) {
-                        delRowsDb(thisFilePath);
-                        printContentsDb();
+                        Db.delRowsDb(thisFilePath);
                     }
                     
                     ProjectManager.deleteItem(entry);

@@ -86,6 +86,7 @@ define(function(require, exports, module) {
         ProjectManager = require("project/ProjectManager"),
         DocumentCommandHandlers = brackets.getModule("document/DocumentCommandHandlers"),
         _ = require("thirdparty/lodash"),
+        Db = require("editor/Db"),
         CompressionUtils = require("thirdparty/rawdeflate"),
         CompressionUtils = require("thirdparty/rawinflate"),
         He = require("thirdparty/he");
@@ -158,15 +159,10 @@ define(function(require, exports, module) {
     PreferencesManager.definePreference(CLOSE_BRACKETS, "boolean", true, {
         description: Strings.DESCRIPTION_CLOSE_BRACKETS
     });
-
+    
     // Persist unsaved changes within DB
-    var HOT_CLOSE = "hotClose";
-
-    PreferencesManager.definePreference(HOT_CLOSE, "boolean", true, {
-        description: Strings.DESCRIPTION_HOT_CLOSE
-    });
-
-    var hotClose = PreferencesManager.get(HOT_CLOSE);
+    var HOT_CLOSE = "hotClose",
+        hotClose = PreferencesManager.get(HOT_CLOSE);
     
     // CodeMirror, html mode, set some tags do not close automatically.
     // We do not initialize "dontCloseTags" because otherwise we would overwrite the default behavior of CodeMirror.
@@ -1222,7 +1218,7 @@ define(function(require, exports, module) {
             
             if (hotClose) {
                 // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                var syncChangesToDb = debouncedDbSync(_captureUnsavedDocChanges, null, this);
+                var syncChangesToDb = debouncedDbSync(null, this);
                 syncChangesToDb();
             }
 
@@ -3216,8 +3212,4 @@ define(function(require, exports, module) {
     exports.Editor = Editor;
     exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
     exports.BOUNDARY_IGNORE_TOP = BOUNDARY_IGNORE_TOP;
-    exports.Db = Db;
-    exports.delRowsDb = delRowsDb;
-    exports.printContentsDb = printContentsDb;
-    exports.sendChangeHistoryDb = sendChangeHistoryDb;
 });
