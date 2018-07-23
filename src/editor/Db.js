@@ -50,8 +50,13 @@
   *                                                       *
   \*******************************************************/
 define(function (require, exports, module) {
-    PreferencesManager = require("preferences/PreferencesManager"),
-    Strings = require("strings");
+    'use strict';
+
+    var PreferencesManager = require("preferences/PreferencesManager"),
+    	Strings = require("strings"),
+    	CompressionUtils = require("thirdparty/rawdeflate"),
+        CompressionUtils = require("thirdparty/rawinflate"),
+        He = require("thirdparty/he");
 
     // Db config
     var HOT_CLOSE = "hotClose";
@@ -67,7 +72,7 @@ define(function (require, exports, module) {
         DB_DESC    = 'Feature: Hot Close',
         DB_SIZE_MB = 300;
         
-    var database = openDatabase(DB_NAME, 
+    var database   = window.openDatabase(DB_NAME, 
                                 DB_VERSION, 
                                 DB_DESC, 
                                 DB_SIZE_MB * 1024 * 1024);
@@ -218,11 +223,11 @@ define(function (require, exports, module) {
                         console.log(error);
                     });
                 }
-                
+
                 // Storage capacity reached for table--make some room, try again
                 if (error.code === 4) {
-                    Db.delRowsDb(null, true);
-                    
+                    delRowsDb(null, true);
+
                     tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
                     null,
                     function (tx, error) {
