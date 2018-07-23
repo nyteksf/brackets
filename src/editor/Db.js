@@ -119,7 +119,7 @@ define(function (require, exports, module) {
         }
     }
 
-    // Prints specific row data from table in db    
+    // Prints specific row data from table in db
     function printRowContentsDb(table, filePath, keyName) {
         database.transaction(function (tx) {
             tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?', [filePath], function (tx, results) {
@@ -184,7 +184,7 @@ define(function (require, exports, module) {
             function (tx, error) {
                 console.log(error);
             });
-        })
+        });
     };
 
     // Allow user ability to clear db of accumulated change history
@@ -228,10 +228,10 @@ define(function (require, exports, module) {
                     function (tx, error) {
                         console.log(error);
                     }
-                    )
+                    );
                 }
-            })
-        })
+            });
+        });
     }
 
     // This is the 'Save Change Data to DB' function
@@ -254,7 +254,7 @@ define(function (require, exports, module) {
                 console.log("Database error! ", err);
             }
         }
-    }
+    };
 
     // Stashes a copy of the current document text, history, etc. in db
     function captureUnsavedDocChanges(that) {
@@ -283,4 +283,4 @@ define(function (require, exports, module) {
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
     exports.sendChangeHistoryDb = sendChangeHistoryDb;
     exports.delRowsDb = delRowsDb;
-})
+});

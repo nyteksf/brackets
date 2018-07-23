@@ -321,167 +321,6 @@ define(function(require, exports, module) {
      */
     var _instances = [];
 
-    /*
-     * Load Web SQL/SQLite3 250 MB Based Persistence of Unsaved Changes
-     */
-    var Db = openDatabase('change_history_db', '1.0', 'Feature: Hot Close', 1024 * 1024 * 250);
-    
-    // Static Db References
-    var tables = [
-            "cursorpos_coords",
-            "scrollpos_coords",
-            "undo_redo_history",
-            "unsaved_doc_changes"
-        ],
-        keyNames = [
-            "int__CursorPos",
-            "int__ScrollPos",
-            "str__DocHistory",
-            "str__DocTxt"
-        ];
-
-    function generateTable (table, keyName) {
-        Db.transaction(function(tx) {
-            tx.executeSql('CREATE TABLE IF NOT EXISTS ' + table + ' (id INTEGER PRIMARY KEY, sessionId UNIQUE, ' + keyName + ')', [],
-                null,
-                function(tx, error) {
-                    console.log("Error: ", error);
-                    console.log("Could not create table ", table);
-                }
-            );
-        });
-    }
-
-    // Attempt creation of default DB tables if not in DB already
-    if (!Db) {
-        console.log("Database error! Database 'change_history_db' has not been loaded!");
-    } else {
-        for (var i = 0, len = tables.length; i < len; i++) {
-            generateTable(tables[i], keyNames[i]);
-        }
-    }
-
-    // Debugging: Prints specific row data to console from a table in Db    
-    function printRowContentsDb(table, filePath, keyName) {
-        Db.transaction(function(tx) {
-            tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?', [filePath], function(tx, results) {
-                if (keyName === "str__DocTxt") {
-                    console.log(He.decode(RawDeflate.inflate(results.rows[0][keyName])));
-                } else {
-                    console.log(results.rows[0][keyName]);
-                }
-            }, function(tx, error) {
-                console.log("Error: Could not print row from table '" + table + "'.");
-                console.log("Error: ", error);
-            });
-        });
-    }
-
-    // Debugging: Display DB contents by sessionId in console
-    function printContentsDb(filePath) {
-        try {
-            for (var i = 0, len = tables.length; i < len; i++) {
-                printRowContentsDb(tables[i], filePath, keyNames[i]);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    // Delete individual row from Db
-    function delTableRowDb(table, filePath) {
-        Db.transaction(function(tx) {
-            tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"', [],
-                null,
-                function (tx, error) {
-                    console.log(error);
-                });
-        });
-    }
-
-    // Remove specific rows from DB by sessionId
-    function delRowsDb(filePath) {
-        try {
-            var table;
-            for (var i = 0; i < tables.length; i++) {
-                table = tables[i];
-                delTableRowDb(table, filePath);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    // Delete a single table from DB
-    function delTableDb(table) {
-        Db.transaction(function(tx) {
-            tx.executeSql("DROP TABLE " + table, [],
-                null,
-                function(tx, error) {
-                    console.log(error);
-                }
-            );
-        })
-    };
-
-    // Allow user ability to clear DB of accumulated change history
-    function wipeAllDb() {
-        try {
-            for (var i = 0, len = tables.length; i < len; i++) {
-                var table = tables[i];
-                delTableDb(table);
-            }
-        } catch (err) {
-            console.log(err);
-        }
-    }
-
-    // Updates specific row in a table in DB    
-    function updateTableRowDb(filePath, table, value, keyName) {
-        if (typeof value === "object") {
-            value = JSON.stringify(value);
-        }
-
-        Db.transaction(function(tx) {
-            value = value.toString();
-            tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
-                null,
-                function(tx, error) {
-                    if (error.code === 6) {
-                        tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
-                            null,
-                            function(tx, error) {
-                                console.log(error);
-                            });
-                    }
-                }
-            );
-        })
-    }
-
-    // This is the 'Save Change Data to DB' function
-    var sendChangeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
-        var values = [
-            cursorPos,
-            scrollPos,
-            curHistoryObjStr,
-            currentTxtDeflated
-        ];
-        
-        if (!Db) {
-            console.log("Database error! No database loaded!");
-        } else {
-            try {
-                for (var i = 0; i < 4; i++) {
-                    updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
-                }
-            } catch (err) {
-                console.log("Database error! ", err);
-            }
-        };
-
-    };
-
     /**
      * Creates a new CodeMirror editor instance bound to the given Document. The Document need not have
      * a "master" Editor realized yet, even if makeMasterEditor is false; in that case, the first time
@@ -669,7 +508,7 @@ define(function(require, exports, module) {
             docText = document.getText();
         
         if (hotClose) {  // Load docTxt from DB here if possible
-            Db.transaction(function (tx, self) {
+            Db.database.transaction(function (tx, self) {
                 tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [document.file._path],
                 function (tx, results) {
                     if (results.rows.length > 0) {
@@ -692,7 +531,7 @@ define(function(require, exports, module) {
             this._updateHiddenLines();
 
             if (hotClose) {  // Load last cursorPos from DB
-                Db.transaction(function(tx) {
+                Db.database.transaction(function(tx) {
                     tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
@@ -1170,7 +1009,7 @@ define(function(require, exports, module) {
             result = new $.Deferred(),
             promise = result.promise();
         try {
-            sendChangeHistoryDb(cursorPos, scrollPos, currentTextObj, curTxtDeflated, fullPathToFile);
+            Db.sendChangeHistoryDb(cursorPos, scrollPos, currentTextObj, curTxtDeflated, fullPathToFile);
         } catch (err) {
             console.log(err);
         }
@@ -1402,7 +1241,7 @@ define(function(require, exports, module) {
         that._codeMirror.clearHistory();
         
         if (hotClose) {  // Attempt to load any unsaved changes
-            Db.transaction(function (tx) {
+            Db.database.transaction(function (tx) {
                 // Restore saved undo/redo history from DB
                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
