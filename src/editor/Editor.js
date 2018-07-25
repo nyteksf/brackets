@@ -59,9 +59,12 @@
  * To listen for events, do something like this: (see EventDispatcher for details on this pattern)
  *     `editorInstance.on("eventname", handler);`
  */
+
 define(function(require, exports, module) {
     "use strict";
-
+    
+    var Window = window;
+    
     var AnimationUtils = require("utils/AnimationUtils"),
         Async = require("utils/Async"),
         CodeMirror = require("thirdparty/CodeMirror/lib/codemirror"),
@@ -84,6 +87,7 @@ define(function(require, exports, module) {
         Dialogs = require("widgets/Dialogs"),
         DefaultDialogs = require("widgets/DefaultDialogs"),
         ProjectManager = require("project/ProjectManager"),
+        EditorManager = require("editor/EditorManager"),
         DocumentCommandHandlers = brackets.getModule("document/DocumentCommandHandlers"),
         _ = require("thirdparty/lodash"),
         Db = require("editor/Db"),
@@ -159,7 +163,7 @@ define(function(require, exports, module) {
     PreferencesManager.definePreference(CLOSE_BRACKETS, "boolean", true, {
         description: Strings.DESCRIPTION_CLOSE_BRACKETS
     });
-    
+
     // Persist unsaved changes within DB
     var HOT_CLOSE = "hotClose",
         hotClose = PreferencesManager.get(HOT_CLOSE);
@@ -513,15 +517,19 @@ define(function(require, exports, module) {
                 function (tx, results) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
-                            savedDocTextDecoded = He.decode(RawDeflate.inflate(savedDocTxt));
+                            savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
                     
-                        that._resetText(savedDocTextDecoded, that);          
+                        console.log("A");
+                        that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
-                        that._resetText(docText, that);
+                        console.log("B");
+                        that._resetText(docText, that, true);
+                        Db.delRowsDb(document.file._path);
                     }
                 });
             });
         } else {  // !hotClose
+            console.log("C");
             this._resetText(document.getText(), this);
         }
         
@@ -529,7 +537,7 @@ define(function(require, exports, module) {
 
         if (range) {
             this._updateHiddenLines();
-
+            console.log("D");
             if (hotClose) {  // Load last cursorPos from DB
                 Db.database.transaction(function(tx) {
                     tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [document.file._path],
@@ -1018,11 +1026,10 @@ define(function(require, exports, module) {
             // FUTURE: Technically we should add a replaceRange() method to Document and go through
             // that instead of talking to its master editor directly. It's not clear yet exactly
             // what the right Document API would be, though.
-            
             if (hotClose) {
                 // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                var syncChangesToDb = Db.debouncedDbSync(null, this);
-                syncChangesToDb();
+                //var syncChangesToDb = Db.debouncedDbSync(null, this);
+                //syncChangesToDb();
             }
 
             this._duringSync = true;
@@ -1039,8 +1046,8 @@ define(function(require, exports, module) {
         // been a change synced from another editor
         
         if (hotClose) {
-            var syncChangeToDb = Db.debouncedDbSync(null, this);
-            syncChangeToDb();
+            //var syncChangeToDb = Db.debouncedDbSync(null, this);
+            //syncChangeToDb();
         }
 
         // The "editorChange" event is mostly for the use of the CodeHintManager.
@@ -1113,7 +1120,18 @@ define(function(require, exports, module) {
         this._codeMirror.on("keydown", _onKeyEvent);
         this._codeMirror.on("keypress", _onKeyEvent);
         this._codeMirror.on("keyup", _onKeyEvent);
-
+        
+        this._codeMirror.on("keydown", function () {
+            var openFilePath  = MainViewManager.getCurrentlyViewedPath('first-pane');
+            var docToSync = DocumentManager.getOpenDocumentForPath(openFilePath);
+            
+            // Ensure doc backed with master editor
+            docToSync._ensureMasterEditor();
+            
+            // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
+            var syncChangesToDb = Db.debouncedDbSync(null, docToSync._masterEditor);
+            syncChangesToDb();
+        });
         // FUTURE: if this list grows longer, consider making this a more generic mapping
         // NOTE: change is a "private" event--others shouldn't listen to it on Editor, only on
         // Document
@@ -1181,7 +1199,7 @@ define(function(require, exports, module) {
      * Semi-private: only Document should call this.
      * @param {!string} text
      */
-    Editor.prototype._resetText = function (text, that) {
+    Editor.prototype._resetText = function (text, that, savedFileOpening) {
         var currentText = that._codeMirror.getValue(); 
         
         // compare with ignoring line-endings, issue #11826
@@ -1201,6 +1219,11 @@ define(function(require, exports, module) {
         that._codeMirror.setValue(text);
         that._codeMirror.refresh();
         
+        if (savedFileOpening) {
+            console.log("DELETING ROWS");
+            Db.delRowsDb(that.document.file._path);
+        }
+        
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();
         
@@ -1211,7 +1234,7 @@ define(function(require, exports, module) {
                     function(tx, results) {
                         
                         if (results.rows.length > 0) {
-                            that._codeMirror.setHistory(JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory))));
+                            that._codeMirror.setHistory(JSON.parse(He.decode(window.RawDeflate.inflate(results.rows["0"].str__DocHistory))));
                         } else {
                             // Mark the document clean.
                             that._codeMirror.markClean();
@@ -1249,6 +1272,7 @@ define(function(require, exports, module) {
                             // No changes; mark as clean by forcing save
                             var docToSave = DocumentManager.getOpenDocumentForPath(that.document.file._path);
                             DocumentCommandHandlers.doSave(docToSave, true);
+                            Db.delRowsDb(that.document.file._path);
                         } 
                     }, function (tx, error) {
                         console.log(error);
@@ -3002,7 +3026,7 @@ define(function(require, exports, module) {
     Editor.LINE_NUMBER_GUTTER_PRIORITY = LINE_NUMBER_GUTTER_PRIORITY;
     Editor.CODE_FOLDING_GUTTER_PRIORITY = CODE_FOLDING_GUTTER_PRIORITY;
 
-    // Set up listeners for preference changes 
+    // Set up listeners for preference changes
     editorOptions.forEach(function(prefName) {
         PreferencesManager.on("change", prefName, function() {
             _instances.forEach(function(editor) {
@@ -3010,7 +3034,7 @@ define(function(require, exports, module) {
             });
         });
     });
-
+    
     // Define public API
     exports.Editor = Editor;
     exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
