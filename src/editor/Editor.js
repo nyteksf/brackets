@@ -1199,7 +1199,7 @@ define(function(require, exports, module) {
      * Semi-private: only Document should call this.
      * @param {!string} text
      */
-    Editor.prototype._resetText = function (text, that, savedFileOpening) {
+    Editor.prototype._resetText = function (text, that) {
         var currentText = that._codeMirror.getValue(); 
         
         // compare with ignoring line-endings, issue #11826
@@ -1218,11 +1218,6 @@ define(function(require, exports, module) {
         // This *will* fire a change event, but we clear the undo immediately afterward
         that._codeMirror.setValue(text);
         that._codeMirror.refresh();
-        
-        if (savedFileOpening) {
-            console.log("DELETING ROWS");
-            Db.delRowsDb(that.document.file._path);
-        }
         
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();

@@ -1240,39 +1240,42 @@ define(function (require, exports, module) {
             result.resolve();
             return promise;
         }
-
+		
         var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
 
         if (doc && doc.isDirty && !_forceClose && (MainViewManager.isExclusiveToPane(doc.file, paneId) || _spawnedRequest)) {
-            // Document is dirty: prompt to save changes before closing if only the document is exclusively
-            // listed in the requested pane or this is part of a list close request
-            var filename = FileUtils.getBaseName(doc.file.fullPath);
+            if (hotClose) {
+				doClose(file);
+			} else {
+				// Document is dirty: prompt to save changes before closing if only the document is exclusively
+				// listed in the requested pane or this is part of a list close request
+				var filename = FileUtils.getBaseName(doc.file.fullPath);
 
-            Dialogs.showModalDialog(
-                DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
-                Strings.SAVE_CLOSE_TITLE,
-                StringUtils.format(
-                    Strings.SAVE_CLOSE_MESSAGE,
-                    StringUtils.breakableUrl(filename)
-                ),
-                [
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_LEFT,
-                        id        : Dialogs.DIALOG_BTN_DONTSAVE,
-                        text      : Strings.DONT_SAVE
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                        id        : Dialogs.DIALOG_BTN_CANCEL,
-                        text      : Strings.CANCEL
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                        id        : Dialogs.DIALOG_BTN_OK,
-                        text      : Strings.SAVE
-                    }
-                ]
-            )
+				Dialogs.showModalDialog(
+					DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
+					Strings.SAVE_CLOSE_TITLE,
+					StringUtils.format(
+						Strings.SAVE_CLOSE_MESSAGE,
+						StringUtils.breakableUrl(filename)
+					),
+					[
+						{
+							className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+							id        : Dialogs.DIALOG_BTN_DONTSAVE,
+							text      : Strings.DONT_SAVE
+						},
+						{
+							className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+							id        : Dialogs.DIALOG_BTN_CANCEL,
+							text      : Strings.CANCEL
+						},
+						{
+							className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+							id        : Dialogs.DIALOG_BTN_OK,
+							text      : Strings.SAVE
+						}
+					]
+				)
                 .done(function (id) {
                     if (id === Dialogs.DIALOG_BTN_CANCEL) {
                         dispatchAppQuitCancelledEvent();
@@ -1309,6 +1312,8 @@ define(function (require, exports, module) {
                         }
                     }
                 });
+			}
+			
             result.always(function () {
                 MainViewManager.focusActivePane();
             });
