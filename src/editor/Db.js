@@ -139,7 +139,7 @@ define(function (require, exports, module) {
                     } else {
                         console.log(results.rows[0][keyName]);
                     }
-                } else { console.log("ROWS FOR FILE ARE EMPTY") }
+                }
             }, function (tx, error) {
                 console.log("Error: Could not print row from table '" + table + "'.");
                 console.log("Error: ", error);
@@ -288,23 +288,13 @@ define(function (require, exports, module) {
                     if (results.rows.length > 0) {
                         var savedTxt = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt));
                         
-                        // No new change to record--saved file is only being reopened
+                        // Nothing new to record
                         if (currentTxt === savedTxt) {
-                            console.log("MATCH CASE DETECTED")
-                            setTimeout(function () {
-                                // Wipe associated db rows 
-                                // delRowsDb(fullPathToFile);
-                            }, 1500);
                             
                             return;
                         }
-                        console.log("NO MATCHES -- CONTINUE")
                     }
-                    console.log("NO RECORDS -- CONTINUE")
-                    
-                    console.log("SHOULD NOT SEE THIS IF MATCH CASE DETECTED")
                     try {
-                        console.log("TRYING SYNC...?")
                         sendChangeHistoryDb(cursorPos, scrollPos, currentTextObj, curTxtDeflated, fullPathToFile);
                     } catch (err) {
                         console.log(err);

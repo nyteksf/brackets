@@ -519,17 +519,14 @@ define(function(require, exports, module) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
                             savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
                     
-                        console.log("A");
                         that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
-                        console.log("B");
                         that._resetText(docText, that, true);
                         Db.delRowsDb(document.file._path);
                     }
                 });
             });
         } else {  // !hotClose
-            console.log("C");
             this._resetText(document.getText(), this);
         }
         
@@ -537,7 +534,6 @@ define(function(require, exports, module) {
 
         if (range) {
             this._updateHiddenLines();
-            console.log("D");
             if (hotClose) {  // Load last cursorPos from DB
                 Db.database.transaction(function(tx) {
                     tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [document.file._path],

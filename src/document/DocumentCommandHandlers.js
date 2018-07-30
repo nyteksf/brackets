@@ -486,7 +486,6 @@ define(function (require, exports, module) {
             silent = (commandData && commandData.silent) || false,
             paneId = (commandData && commandData.paneId) || MainViewManager.ACTIVE_PANE,
             result = new $.Deferred();
-        console.log('AAA')        
         _doOpenWithOptionalPath(fileInfo.path, silent, paneId, commandData && commandData.options)
             .done(function (file) {
                 HealthLogger.fileOpened(file._path, false, file._encoding);
@@ -557,7 +556,6 @@ define(function (require, exports, module) {
 
     function handleDocumentOpen(commandData) {
         var result = new $.Deferred();
-        console.log('BBB')
         
         handleFileOpen(commandData)
             .done(function (file) {
@@ -566,8 +564,8 @@ define(function (require, exports, module) {
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
                 var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
-                result.resolve(doc);
-            console.log("CCC");
+                
+				result.resolve(doc);
             })
             .fail(function () {
                 result.reject();
