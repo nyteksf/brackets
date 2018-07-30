@@ -39,7 +39,6 @@ define(function (require, exports, module) {
         CLOSE_BRACKETS    = "closeBrackets",
         AUTO_HIDE_SEARCH  = "autoHideSearch";
 
-
     /**
      * @private
      *
@@ -51,8 +50,6 @@ define(function (require, exports, module) {
     _optionMapping[WORD_WRAP] = Commands.TOGGLE_WORD_WRAP;
     _optionMapping[CLOSE_BRACKETS] = Commands.TOGGLE_CLOSE_BRACKETS;
     _optionMapping[AUTO_HIDE_SEARCH] = Commands.TOGGLE_SEARCH_AUTOHIDE;
-
-
 
     /**
      * @private

@@ -501,18 +501,11 @@ define(function (require, exports, module) {
                     }
                     
                     // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
-                    EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                                                                    fileInfo.column - 1,
-                                                                    true);
+                    //EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
+                    //                                                fileInfo.column - 1,
+                    //                                                true);
                 }
-                // result.resolve(file);
                 
-                if (fileInfo.line !== null) {
-                        if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                            fileInfo.column = 1;
-                        }
-                    }
-            
                 if (!hotClose) {
                     // If a line and column number were given, position the editor accordingly.
                     if (fileInfo.line !== null) {
@@ -1244,74 +1237,104 @@ define(function (require, exports, module) {
         var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
 
         if (doc && doc.isDirty && !_forceClose && (MainViewManager.isExclusiveToPane(doc.file, paneId) || _spawnedRequest)) {
-            // Document is dirty: prompt to save changes before closing if only the document is exclusively
-            // listed in the requested pane or this is part of a list close request
-            var filename = FileUtils.getBaseName(doc.file.fullPath);
-
-            Dialogs.showModalDialog(
-                DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
-                Strings.SAVE_CLOSE_TITLE,
-                StringUtils.format(
-                    Strings.SAVE_CLOSE_MESSAGE,
-                    StringUtils.breakableUrl(filename)
-                ),
-                [
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_LEFT,
-                        id        : Dialogs.DIALOG_BTN_DONTSAVE,
-                        text      : Strings.DONT_SAVE
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                        id        : Dialogs.DIALOG_BTN_CANCEL,
-                        text      : Strings.CANCEL
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                        id        : Dialogs.DIALOG_BTN_OK,
-                        text      : Strings.SAVE
-                    }
-                ]
-            )
-                .done(function (id) {
-                    if (id === Dialogs.DIALOG_BTN_CANCEL) {
-                        dispatchAppQuitCancelledEvent();
-                        result.reject();
-                    } else if (id === Dialogs.DIALOG_BTN_OK) {
-                        // "Save" case: wait until we confirm save has succeeded before closing
-                        handleFileSave({doc: doc})
-                            .done(function (newFile) {
-                                doClose(newFile);
-                                result.resolve();
-                            })
-                            .fail(function () {
-                                result.reject();
-                            });
-                    } else {
-                        // "Don't Save" case: even though we're closing the main editor, other views of
-                        // the Document may remain in the UI. So we need to revert the Document to a clean
-                        // copy of whatever's on disk.
-                        doClose(file);
-
-                        // Only reload from disk if we've executed the Close for real.
-                        if (promptOnly) {
-                            result.resolve();
-                        } else {
-                            // Even if there are no listeners attached to the document at this point, we want
-                            // to do the revert anyway, because clients who are listening to the global documentChange
-                            // event from the Document module (rather than attaching to the document directly),
-                            // such as the Find in Files panel, should get a change event. However, in that case,
-                            // we want to ignore errors during the revert, since we don't want a failed revert
-                            // to throw a dialog if the document isn't actually open in the UI.
-                            var suppressError = !DocumentManager.getOpenDocumentForPath(file.fullPath);
-                            _doRevert(doc, suppressError)
-                                .then(result.resolve, result.reject);
-                        }
-                    }
+            
+            if (hotClose) {
+                console.log("EXECUTING INSPECTION OF DIRTY DOC: ")
+                console.log(doc);
+                
+                // Gather data from dirty doc
+                var cursorPos = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor.getCursorPos()))),
+                    scrollPos = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor.getScrollPos()))),
+                    curHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor._codeMirror.getHistory()))),
+                    compressedDocText = RawDeflate.deflate(He.encode(doc._masterEditor._codeMirror.getValue())),
+                    fullFilePath = doc.file._path;
+                
+                console.log(doc._masterEditor.getCursorPos(), doc._masterEditor.getScrollPos(), doc._masterEditor._codeMirror.getHistory(), doc._masterEditor._codeMirror.getValue())
+                
+                console.log("HISTORY DATA LOADED!")
+                
+                // Launch silent db set/update event
+                Db.sendChangeHistoryDb(cursorPos, scrollPos, curHistoryObjStr, fullFilePath)
+                    .then(function () {
+                        Db.sendDocTextDb(fullFilePath, compressedDocText);
+                    })
+                    .then(function () {
+                        var docPaneId   = doc._masterEditor._paneId,
+                            unsavedFile = doc.file;
+                    
+                        MainViewManager._close(docPaneId, unsavedFile);
+                        result.resolve();
                 });
-            result.always(function () {
-                MainViewManager.focusActivePane();
-            });
+            } else {
+                // Document is dirty: prompt to save changes before closing if only the document is exclusively
+                // listed in the requested pane or this is part of a list close request
+                var filename = FileUtils.getBaseName(doc.file.fullPath);
+
+                Dialogs.showModalDialog(
+                    DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
+                    Strings.SAVE_CLOSE_TITLE,
+                    StringUtils.format(
+                        Strings.SAVE_CLOSE_MESSAGE,
+                        StringUtils.breakableUrl(filename)
+                    ),
+                    [
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+                            id        : Dialogs.DIALOG_BTN_DONTSAVE,
+                            text      : Strings.DONT_SAVE
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                            id        : Dialogs.DIALOG_BTN_CANCEL,
+                            text      : Strings.CANCEL
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                            id        : Dialogs.DIALOG_BTN_OK,
+                            text      : Strings.SAVE
+                        }
+                    ]
+                )
+                    .done(function (id) {
+                        if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                            dispatchAppQuitCancelledEvent();
+                            result.reject();
+                        } else if (id === Dialogs.DIALOG_BTN_OK) {
+                            // "Save" case: wait until we confirm save has succeeded before closing
+                            handleFileSave({doc: doc})
+                                .done(function (newFile) {
+                                    doClose(newFile);
+                                    result.resolve();
+                                })
+                                .fail(function () {
+                                    result.reject();
+                                });
+                        } else {
+                            // "Don't Save" case: even though we're closing the main editor, other views of
+                            // the Document may remain in the UI. So we need to revert the Document to a clean
+                            // copy of whatever's on disk.
+                            doClose(file);
+
+                            // Only reload from disk if we've executed the Close for real.
+                            if (promptOnly) {
+                                result.resolve();
+                            } else {
+                                // Even if there are no listeners attached to the document at this point, we want
+                                // to do the revert anyway, because clients who are listening to the global documentChange
+                                // event from the Document module (rather than attaching to the document directly),
+                                // such as the Find in Files panel, should get a change event. However, in that case,
+                                // we want to ignore errors during the revert, since we don't want a failed revert
+                                // to throw a dialog if the document isn't actually open in the UI.
+                                var suppressError = !DocumentManager.getOpenDocumentForPath(file.fullPath);
+                                _doRevert(doc, suppressError)
+                                    .then(result.resolve, result.reject);
+                            }
+                        }
+                    });
+                result.always(function () {
+                    MainViewManager.focusActivePane();
+                });
+            }
         } else {
             // File is not open, or IS open but Document not dirty: close immediately
             doClose(file);
@@ -1320,7 +1343,66 @@ define(function (require, exports, module) {
         }
         return promise;
     }
-
+    
+    /**
+     * Saves all unsaved documents corresponding to 'fileList'. Returns a Promise that will be resolved
+     * once ALL the save operations have been completed. If ANY save operation fails, an error dialog is
+     * immediately shown but after dismissing we continue saving the other files; after all files have
+     * been processed, the Promise is rejected if any ONE save operation failed (the error given is the
+     * first one encountered). If the user cancels any Save As dialog (for untitled files), the
+     * Promise is immediately rejected.
+     *
+     * @param {!Array.<File>} fileList
+     * @return {!$.Promise} Resolved with {!Array.<File>}, which may differ from 'fileList'
+     *      if any of the files were Unsaved documents. Or rejected with {?FileSystemError}.
+     */
+    function _storeFileTextList(list) {
+        var filesAfterSave = [];
+        
+        return Async.doSequentially(
+            list,
+            function (file) {
+                var filePathForDoc = file.file._path,
+                    doc = DocumentManager.getOpenDocumentForPath(filePathForDoc);
+                
+                if (doc) {
+                    // Gather document data here
+                    var cursorPos = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor.getCursorPos()))),
+                        scrollPos = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor.getScrollPos()))),
+                        curHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor._codeMirror.getHistory()))),
+                        compressedDocText = RawDeflate.deflate(He.encode(doc._masterEditor._codeMirror.getValue())),
+                        fullFilePath = doc.file._path;
+                    
+                    // Push remaining data to db
+                    var storePromise = Db.sendChangeHistoryDb(cursorPos, scrollPos, curHistoryObjStr, fullFilePath)
+                        .then(function () {
+                            console.log("sendChangeHistoryDb executed")
+                            Db.sendDocTextDb(fullFilePath, compressedDocText);
+                            console.log("sendDoctextDb executed")
+                        });
+                    storePromise
+                        .done(function (newFile) {
+                            filesAfterSave.push(newFile);
+                            console.log("pushed to filesAfterSave")
+                        })
+                        .fail(function (error) {
+                            console.log(error);
+                        });
+                    
+                    return storePromise;
+                } else {
+                    // workingset entry that was never actually opened - ignore
+                    filesAfterSave.push(file);
+                    console.log("never actually opened - ignore")
+                    return (new $.Deferred()).resolve().promise();
+                }
+            },
+            false  // if any save fails, continue trying to save other files anyway; then reject at end
+        ).then(function () {
+            return filesAfterSave;
+        });
+    }
+    
     /**
      * @param {!Array.<File>} list - the list of files to close
      * @param {boolean} promptOnly - true to just prompt for saving documents with actually closing them.
@@ -1330,58 +1412,95 @@ define(function (require, exports, module) {
     function _closeList(list, promptOnly, _forceClose) {
         var result      = new $.Deferred(),
             unsavedDocs = [];
-
-        if (hotClose) {
-	       result.resolve();
-        } else {
-            list.forEach(function (file) {
+        
+        list.forEach(function (file) {
             var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
             if (doc && doc.isDirty) {
                 unsavedDocs.push(doc);
             }
         });
-
-        if (unsavedDocs.length === 0 || _forceClose) {
-            // No unsaved changes or we want to ignore them, so we can proceed without a prompt
-            result.resolve();
-
-        } else if (unsavedDocs.length === 1) {
-            // Only one unsaved file: show the usual single-file-close confirmation UI
-            var fileCloseArgs = { file: unsavedDocs[0].file, promptOnly: promptOnly, spawnedRequest: true };
-
-            handleFileClose(fileCloseArgs).done(function () {
-                // still need to close any other, non-unsaved documents
+        
+        // Stash DocText of all dirty docs in db before attempt closing all
+        if (hotClose) {
+            console.log("TRYING TO STORE DOC DATA BEFORE CLOSE ALL")
+            
+            if (unsavedDocs.length === 0 || _forceClose) {
+                // NOOP
                 result.resolve();
-            }).fail(function () {
-                result.reject();
-            });
-
+            } 
+            else if (unsavedDocs.length === 1) {
+                // Gather data from open doc
+                var cursorPos = RawDeflate.deflate(He.encode(JSON.stringify(unsavedDocs[0]._masterEditor.getCursorPos()))),
+                    scrollPos = RawDeflate.deflate(He.encode(JSON.stringify(unsavedDocs[0]._masterEditor.getScrollPos()))),
+                    curHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(unsavedDocs[0]._masterEditor._codeMirror.getHistory()))),
+                    compressedDocText = RawDeflate.deflate(He.encode(unsavedDocs[0]._masterEditor._codeMirror.getValue())),
+                    fullFilePath = unsavedDocs[0].file._path;
+                
+                // Launch silent db set/update event
+                Db.sendChangeHistoryDb(cursorPos, scrollPos, curHistoryObjStr, fullFilePath)
+                    .then(function () {
+                        Db.sendDocTextDb(fullFilePath, compressedDocText);
+                    })
+                    .then(function () {
+                        var docPaneId   = unsavedDocs[0]._masterEditor._paneId,
+                            unsavedFile = unsavedDocs[0].file;
+                    
+                        MainViewManager._close(docPaneId, unsavedFile);
+                        result.resolve();
+                });
+            } 
+            else if (unsavedDocs.length > 1) {
+                // Save all unsaved files, then if that succeeds, close all
+                _storeFileTextList(unsavedDocs).done(function () {
+                    // List of files after save may be different, if any were Untitled
+                    result.resolve();
+                }).fail(function () {
+                    result.reject();
+                });
+            }
         } else {
-            // Multiple unsaved files: show a single bulk prompt listing all files
-            var message = Strings.SAVE_CLOSE_MULTI_MESSAGE + FileUtils.makeDialogFileList(_.map(unsavedDocs, _shortTitleForDocument));
+            // Normal file save/close logic
+            if (unsavedDocs.length === 0 || _forceClose) {
+                // No unsaved changes or we want to ignore them, so we can proceed without a prompt
+                result.resolve();
 
-            Dialogs.showModalDialog(
-                DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
-                Strings.SAVE_CLOSE_TITLE,
-                message,
-                [
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_LEFT,
-                        id        : Dialogs.DIALOG_BTN_DONTSAVE,
-                        text      : Strings.DONT_SAVE
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                        id        : Dialogs.DIALOG_BTN_CANCEL,
-                        text      : Strings.CANCEL
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                        id        : Dialogs.DIALOG_BTN_OK,
-                        text      : Strings.SAVE
-                    }
-                ]
-            )
+            } else if (unsavedDocs.length === 1) {
+                // Only one unsaved file: show the usual single-file-close confirmation UI
+                var fileCloseArgs = { file: unsavedDocs[0].file, promptOnly: promptOnly, spawnedRequest: true };
+
+                handleFileClose(fileCloseArgs).done(function () {
+                    // still need to close any other, non-unsaved documents
+                    result.resolve();
+                }).fail(function () {
+                    result.reject();
+                });
+                
+            } else {
+                // Multiple unsaved files: show a single bulk prompt listing all files
+                var message = Strings.SAVE_CLOSE_MULTI_MESSAGE + FileUtils.makeDialogFileList(_.map(unsavedDocs, _shortTitleForDocument));
+
+                Dialogs.showModalDialog(
+                    DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
+                    Strings.SAVE_CLOSE_TITLE,
+                    message,
+                    [
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+                            id        : Dialogs.DIALOG_BTN_DONTSAVE,
+                            text      : Strings.DONT_SAVE
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                            id        : Dialogs.DIALOG_BTN_CANCEL,
+                            text      : Strings.CANCEL
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                            id        : Dialogs.DIALOG_BTN_OK,
+                            text      : Strings.SAVE
+                        }
+                    ]
+                )
                 .done(function (id) {
                     if (id === Dialogs.DIALOG_BTN_CANCEL) {
                         dispatchAppQuitCancelledEvent();
@@ -1390,7 +1509,7 @@ define(function (require, exports, module) {
                         // Save all unsaved files, then if that succeeds, close all
                         _saveFileList(list).done(function (listAfterSave) {
                             // List of files after save may be different, if any were Untitled
-                            result.resolve(listAfterSave);
+                            result.resolve();
                         }).fail(function () {
                             result.reject();
                         });
@@ -1401,14 +1520,13 @@ define(function (require, exports, module) {
                 });
             }
         }
-
+        
         // If all the unsaved-changes confirmations pan out above, then go ahead & close all editors
         // NOTE: this still happens before any done() handlers added by our caller, because jQ
         // guarantees that handlers run in the order they are added.
-        result.done(function (listAfterSave) {
-            listAfterSave = listAfterSave || list;
+        result.done(function () {
             if (!promptOnly) {
-                MainViewManager._closeList(MainViewManager.ALL_PANES, listAfterSave);
+                // MainViewManager._closeList(MainViewManager.ALL_PANES, list);
             }
         });
 
@@ -1723,37 +1841,71 @@ define(function (require, exports, module) {
         }
 
         _isReloading = true;
+        
+        if (hotClose) {
+            return CommandManager.execute(Commands.FILE_CLOSE_ALL, { promptOnly: false }).done(function () {
+                // Give everyone a chance to save their state - but don't let any problems block
+                // us from quitting
+                try {
+                    ProjectManager.trigger("beforeAppClose");
+                } catch (ex) {
+                    console.error(ex);
+                }
+                
+                // Disable the cache to make reloads work
+                _disableCache().always(function () {
+                    // Remove all menus to assure every part of Brackets is reloaded
+                    _.forEach(Menus.getAllMenus(), function (value, key) {
+                        Menus.removeMenu(key);
+                    });
 
-        return CommandManager.execute(Commands.FILE_CLOSE_ALL, { promptOnly: true }).done(function () {
-            // Give everyone a chance to save their state - but don't let any problems block
-            // us from quitting
-            try {
-                ProjectManager.trigger("beforeAppClose");
-            } catch (ex) {
-                console.error(ex);
-            }
+                    // If there's a fragment in both URLs, setting location.href won't actually reload
+                    var fragment = href.indexOf("#");
+                    if (fragment !== -1) {
+                        href = href.substr(0, fragment);
+                    }
 
-            // Disable the cache to make reloads work
-            _disableCache().always(function () {
-                // Remove all menus to assure every part of Brackets is reloaded
-                _.forEach(Menus.getAllMenus(), function (value, key) {
-                    Menus.removeMenu(key);
+                    // Defer for a more successful reload - issue #11539
+                    setTimeout(function () {
+                        window.location.href = href;
+                    }, 1000);
                 });
-
-                // If there's a fragment in both URLs, setting location.href won't actually reload
-                var fragment = href.indexOf("#");
-                if (fragment !== -1) {
-                    href = href.substr(0, fragment);
+            }).fail(function () {
+                _isReloading = false;
+            });
+        } else {
+            return CommandManager.execute(Commands.FILE_CLOSE_ALL, { promptOnly: true }).done(function () {
+                // Give everyone a chance to save their state - but don't let any problems block
+                // us from quitting
+                try {
+                    ProjectManager.trigger("beforeAppClose");
+                } catch (ex) {
+                    console.error(ex);
                 }
 
-                // Defer for a more successful reload - issue #11539
-                setTimeout(function () {
-                    window.location.href = href;
-                }, 1000);
+                // Disable the cache to make reloads work
+                _disableCache().always(function () {
+                    console.log("MADE IT TO REMOVING MENUES")
+                    // Remove all menus to assure every part of Brackets is reloaded
+                    _.forEach(Menus.getAllMenus(), function (value, key) {
+                        Menus.removeMenu(key);
+                    });
+
+                    // If there's a fragment in both URLs, setting location.href won't actually reload
+                    var fragment = href.indexOf("#");
+                    if (fragment !== -1) {
+                        href = href.substr(0, fragment);
+                    }
+
+                    // Defer for a more successful reload - issue #11539
+                    setTimeout(function () {
+                        window.location.href = href;
+                    }, 1000);
+                });
+            }).fail(function () {
+                _isReloading = false;
             });
-        }).fail(function () {
-            _isReloading = false;
-        });
+        }
     }
 
     /**

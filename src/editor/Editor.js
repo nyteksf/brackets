@@ -63,8 +63,6 @@
 define(function(require, exports, module) {
     "use strict";
     
-    var Window = window;
-    
     var AnimationUtils = require("utils/AnimationUtils"),
         Async = require("utils/Async"),
         CodeMirror = require("thirdparty/CodeMirror/lib/codemirror"),
@@ -511,25 +509,29 @@ define(function(require, exports, module) {
         var that = this,
             docText = document.getText();
         
-        if (hotClose) {  // Load docTxt from DB here if possible
+        if (hotClose) {  
+            // Try loading docTxt from DB if possible
             Db.database.transaction(function (tx, self) {
                 tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [document.file._path],
                 function (tx, results) {
                     if (results.rows.length > 0) {
-                        var savedDocTxt = results.rows[0].str__DocTxt,
-                            savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
-                    
-                        console.log("A");
-                        that._resetText(savedDocTextDecoded, that);
-                    } else {  // Use cur doc text if no unsaved changes were found in DB
-                        console.log("B");
-                        that._resetText(docText, that, true);
-                        Db.delRowsDb(document.file._path);
+                        console.log("FROM DB")
+                        
+                        var savedDocText = results.rows[0].str__DocTxt,
+                            unpackedDocText = He.decode(RawDeflate.inflate(savedDocText));
+                        
+                        that._resetText(unpackedDocText, that);
+                        
+                        Db.printContentsDb(that.document.file._path);
+                    } else {  
+                        console.log("FROM METADATA")
+                        // Use cur doc text if no unsaved changes were found in DB
+                        that._resetText(docText, that);
                     }
                 });
             });
         } else {  // !hotClose
-            console.log("C");
+            console.log("HOT CLOSE IS FALSE! USING DOCUMENT.GETTEXT()");
             this._resetText(document.getText(), this);
         }
         
@@ -537,25 +539,7 @@ define(function(require, exports, module) {
 
         if (range) {
             this._updateHiddenLines();
-            console.log("D");
-            if (hotClose) {  // Load last cursorPos from DB
-                Db.database.transaction(function(tx) {
-                    tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [document.file._path],
-                    function(tx, results) {
-                        if (results.rows.length > 0) {
-                            var cursorPosLn = JSON.stringify(results.rows[0].int__CursorPos.line),
-                                cursorPosCh =
-                            JSON.stringify(results.rows[0].int__CursorPos.ch);
-                            
-                            that.setCursorPos(cursorPosLn, cursorPosCh, true);
-                        } else {  // Use default functionality instead
-                            that.setCursorPos(range.startLine, 0);
-                        }
-                    }, function (tx, error) {
-                        console.log(error);
-                    });
-                });
-            } else {
+            if (!hotClose) {  // Load last cursorPos from DB
                 that.setCursorPos(range.startLine, 0);
             }
         }
@@ -1028,8 +1012,8 @@ define(function(require, exports, module) {
             // what the right Document API would be, though.
             if (hotClose) {
                 // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                //var syncChangesToDb = Db.debouncedDbSync(null, this);
-                //syncChangesToDb();
+                // var syncChangesToDb = Db.debouncedDbSync(this.document);
+                // syncChangesToDb();
             }
 
             this._duringSync = true;
@@ -1044,10 +1028,10 @@ define(function(require, exports, module) {
         // we're the ground truth; nothing else to do, since Document listens directly to us
         // note: this change might have been a real edit made by the user, OR this might have
         // been a change synced from another editor
-        
         if (hotClose) {
-            //var syncChangeToDb = Db.debouncedDbSync(null, this);
-            //syncChangeToDb();
+            // var syncChangeToDb = Db.debouncedDbSync(this.document);
+            // syncChangeToDb();
+            // console.log("SYNCING STARTED")
         }
 
         // The "editorChange" event is mostly for the use of the CodeHintManager.
@@ -1120,18 +1104,7 @@ define(function(require, exports, module) {
         this._codeMirror.on("keydown", _onKeyEvent);
         this._codeMirror.on("keypress", _onKeyEvent);
         this._codeMirror.on("keyup", _onKeyEvent);
-        
-        this._codeMirror.on("keydown", function () {
-            var openFilePath  = MainViewManager.getCurrentlyViewedPath('first-pane');
-            var docToSync = DocumentManager.getOpenDocumentForPath(openFilePath);
-            
-            // Ensure doc backed with master editor
-            docToSync._ensureMasterEditor();
-            
-            // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-            var syncChangesToDb = Db.debouncedDbSync(null, docToSync._masterEditor);
-            syncChangesToDb();
-        });
+
         // FUTURE: if this list grows longer, consider making this a more generic mapping
         // NOTE: change is a "private" event--others shouldn't listen to it on Editor, only on
         // Document
@@ -1199,14 +1172,14 @@ define(function(require, exports, module) {
      * Semi-private: only Document should call this.
      * @param {!string} text
      */
-    Editor.prototype._resetText = function (text, that, savedFileOpening) {
+    Editor.prototype._resetText = function (text, that) {
         var currentText = that._codeMirror.getValue(); 
         
         // compare with ignoring line-endings, issue #11826
         var textLF = text ? text.replace(/(\r\n|\r|\n)/g, "\n") : null;
         var currentTextLF = currentText ? currentText.replace(/(\r\n|\r|\n)/g, "\n") : null;
         if (textLF === currentTextLF) {
-            // there's nothing to reset                
+            // there's nothing to reset     
             return;
         }
         
@@ -1219,11 +1192,6 @@ define(function(require, exports, module) {
         that._codeMirror.setValue(text);
         that._codeMirror.refresh();
         
-        if (savedFileOpening) {
-            console.log("DELETING ROWS");
-            Db.delRowsDb(that.document.file._path);
-        }
-        
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();
         
@@ -1234,8 +1202,12 @@ define(function(require, exports, module) {
                     function(tx, results) {
                         
                         if (results.rows.length > 0) {
-                            that._codeMirror.setHistory(JSON.parse(He.decode(window.RawDeflate.inflate(results.rows["0"].str__DocHistory))));
+                            var savedDocHistory = JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory)));
+                            
+                            console.log(savedDocHistory)
+                            that._codeMirror.setHistory(savedDocHistory);
                         } else {
+                            console.log("NO HISTORY DATA FOUND")
                             // Mark the document clean.
                             that._codeMirror.markClean();
                         } 
@@ -1249,10 +1221,13 @@ define(function(require, exports, module) {
                         
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
-                            var savedCursorPos = JSON.parse(results.rows[0].int__CursorPos);
+                            var savedCursorPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__CursorPos)));
+                            
+                            console.log(savedCursorPos);
                             
                             that.setCursorPos(savedCursorPos);
                         } else {
+                            console.log("NOTHING FOUND: SAVEDCURSORPOS");
                             that.setCursorPos(cursorPos);
                         } 
                     }, function (tx, error) {
@@ -1264,12 +1239,15 @@ define(function(require, exports, module) {
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
-                            var savedScrollPos = JSON.parse(results.rows[0].int__ScrollPos);
+                            var savedScrollPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__ScrollPos)));
+                                                            
                             that.setScrollPos(savedScrollPos.x, savedScrollPos.y);
                         } else {
+                            console.log("NOTHING FOUND: SAVEDSCROLLPOS");
                             that.setScrollPos(scrollPos.x, scrollPos.y);
-                            
-                            // No changes; mark as clean by forcing save
+                         
+                            // No changes; restore clean status by forcing save
+                            // NOTE: CAN I MANUALLY CHANGE DOC TO CLEAN AND MANUALLY TRIGGER A TITLE/WORKINGSET REFRESH?
                             var docToSave = DocumentManager.getOpenDocumentForPath(that.document.file._path);
                             DocumentCommandHandlers.doSave(docToSave, true);
                             Db.delRowsDb(that.document.file._path);
@@ -3034,7 +3012,7 @@ define(function(require, exports, module) {
             });
         });
     });
-    
+
     // Define public API
     exports.Editor = Editor;
     exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
