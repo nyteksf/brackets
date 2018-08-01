@@ -21,49 +21,49 @@
  *
  */
  
-  /***************************************************************\
-  *                                                               *
-  *     WebSQL/SQLite3 500 MB Persistence of Unsaved Changes      *
-  *                                                               *
-  * ------------------------------------------------------------- *
-  *                  DB Structure - 4 * 125MB Tables                 *
-  * ------------------------------------------------------------- *
-  *                                                               *
-  *               Table 1                      Table 2            *
-  *  +----------------------------+----------------------------+  *
-  *  |     'cursorpos_coords'     |      'scrollpos_coords'    |  *
-  *  +----------------------------+----------------------------+  *
-  *  |    int__CursorPos INTEGER  |    int__ScrollPos INTEGER  |  *
-  *  +----------------------------+----------------------------+  *
-  *                                                               *
-  *               Table 3                      Table 4            *
-  *  +----------------------------+----------------------------+  *
-  *  |    'undo_redo_history'     |    'unsaved_doc_changes'   |  *
-  *  +----------------------------+----------------------------+  *
-  *  |    str__DocHistory TEXT    |      str__DocTxt TEXT      |  *
-  *  +----------------------------+----------------------------+  *
-  *                                                               *
-  * ------------------------------------------------------------- *
-  *                                                               *
-  *         This module features db config info, db               *
-  *         instantiation and associated CRUD methods. It         *
-  *         interacts with the editor while shadowing the         *  
-  *         assigned codemirror to preserve any unsaved           *
-  *         doc changes. Keydown events serve as trigger          *
-  *         for this event.                                       *
-  *                                                               *
-  \***************************************************************/
+  /*******************************************************************\
+  *                                                                   *
+  *       WebSQL/SQLite3 500 MB Persistence of Unsaved Changes        *
+  *                                                                   *
+  * ----------------------------------------------------------------- *
+  *                    DB Structure: 4 * 125MB Tables                 *
+  * ----------------------------------------------------------------- *
+  *                                                                   *
+  *               Table 1                       Table 2               *
+  *    +----------------------------+----------------------------+    *
+  *    |      "cursorpos_coords"    |     "scrollpos_coords"     |    *
+  *    +----------------------------+----------------------------+    *
+  *    |    int__CursorPos INTEGER  |   int__ScrollPos INTEGER   |    *
+  *    +----------------------------+----------------------------+    *
+  *                                                                   *
+  *               Table 3                       Table 4               *
+  *    +----------------------------+----------------------------+    *
+  *    |    "undo_redo_history"     |    "unsaved_doc_changes"   |    *
+  *    +----------------------------+----------------------------+    *
+  *    |    str__DocHistory TEXT    |      str__DocTxt TEXT      |    *
+  *    +----------------------------+----------------------------+    *
+  *                                                                   *
+  * ----------------------------------------------------------------- *
+  *                                                                   *
+  *     This module features database config info, and methods		  *
+  *		for db instantiation and CRUD. Keyup events trigger a sync	  *
+  *		of all history data to the database.It interacts with the 	  *
+  *		editor while shadowing the assigned codemirror in order to	  *
+  *		preserve any unsaved doc changes that occur.				  *
+  *                                                                   *
+  \*******************************************************************/
 define(function (require, exports, module) {
     'use strict';
 
     var Editor = require("editor/Editor"),
         PreferencesManager = require("preferences/PreferencesManager"),
     	Strings = require("strings"),
+        DocumentManager = require("document/DocumentManager"),
     	CompressionUtils = require("thirdparty/rawdeflate"),
         CompressionUtils = require("thirdparty/rawinflate"),
         He = require("thirdparty/he");
 
-    // Db config
+    // Config settings
     var HOT_CLOSE = "hotClose";
 
     PreferencesManager.definePreference(HOT_CLOSE, "boolean", true, {
@@ -75,12 +75,12 @@ define(function (require, exports, module) {
     var DB_NAME    = 'change_history_db',
         DB_VERSION = '1.0',
         DB_DESC    = 'Feature: Hot Close',
-        DB_SIZE_MB = 300;
+        DB_SIZE_MB = 500;
         
     var database   = window.openDatabase(DB_NAME, 
-                                DB_VERSION, 
-                                DB_DESC, 
-                                DB_SIZE_MB * 1024 * 1024);
+                                    DB_VERSION, 
+                                    DB_DESC, 
+                                    DB_SIZE_MB * 1024 * 1024);
     
     // Static db references
     var tables = [
@@ -98,17 +98,28 @@ define(function (require, exports, module) {
 
     // Debounce syncing of new unsaved changes to db
     var timer = null;
-    function debouncedDbSync(delay, arg) {
-        return function () {
-            clearTimeout(timer);
-            timer = setTimeout(function () {
-                captureUnsavedDocChanges(arg);
-            }, delay || 1250);
-        };
+    function debouncedSync(doc, delay) {
+		var result = new $.Deferred();
+		try {
+			
+			return function () {
+				clearTimeout(timer);
+				timer = setTimeout(function () {
+					console.log("DOC SYNCING")
+					captureUnsavedDocChanges(doc);
+				}, delay || 1250);
+				result.resolve();
+			};
+		} catch (err) {
+			console.log(err);
+			result.reject();
+		}
+		
+		return result.promise();
     };
 
-    // Generate individual db table
-    function generateTable (table, keyName) {
+    // Creates a table in current db
+    function createTable (table, keyName) {
         database.transaction(function (tx) {
             tx.executeSql('CREATE TABLE IF NOT EXISTS ' + table + ' (id INTEGER PRIMARY KEY, sessionId UNIQUE, ' + keyName + ')', [],
                 null,
@@ -125,7 +136,7 @@ define(function (require, exports, module) {
         console.log("Database error! Database 'change_history_db' has not been loaded!");
     } else {
         for (var i = 0, len = tables.length; i < len; i++) {
-            generateTable(tables[i], keyNames[i]);
+            createTable(tables[i], keyNames[i]);
         }
     }
 
@@ -139,7 +150,7 @@ define(function (require, exports, module) {
                     } else {
                         console.log(results.rows[0][keyName]);
                     }
-                }
+                } else { console.log("NOTHING TO PRINT: ROWS FOR FILE ARE EMPTY") }
             }, function (tx, error) {
                 console.log("Error: Could not print row from table '" + table + "'.");
                 console.log("Error: ", error);
@@ -147,8 +158,8 @@ define(function (require, exports, module) {
         });
     }
 
-    // Display db contents by sessionId in console
-    function printContentsDb(filePath) {
+    // Select and display db contents from all tables by sessionId
+    function printSavedContents(filePath) {
         try {
             for (var i = 0, len = tables.length; i < len; i++) {
                 printRowContentsDb(tables[i], filePath, keyNames[i]);
@@ -169,11 +180,13 @@ define(function (require, exports, module) {
         });
     }
 
-    // Remove specific rows from db by sessionId
-    function delRowsDb(filePath, limitReached) {
-        try {
-            if (limitReached) {
-                // Wipe all data from db
+    // Select and remove specific rows from db by sessionId
+    function delRows(filePath, limitReached) {
+        var result = new $.Deferred();
+		
+		try {
+			if (limitReached) {
+                // Slash and burn all data in db
                 filePath = '*';
             }
             
@@ -182,13 +195,16 @@ define(function (require, exports, module) {
                 table = tables[i];
                 delTableRowDb(table, filePath);
             }
-            
+            result.resolve();	
         } catch (err) {
             console.log(err);
+			result.reject();
         }
+		
+		return result.promise();
     }
 
-    // Delete a single table from db
+    // Drops a single table from db
     function delTableDb(table) {
         database.transaction(function (tx) {
             tx.executeSql("DROP TABLE " + table, [],
@@ -200,12 +216,13 @@ define(function (require, exports, module) {
     };
 
     // Allow user ability to clear db of accumulated change history
-    function wipeAllDb() {
+    function wipeAll() {
         try {
             for (var i = 0, len = tables.length; i < len; i++) {
                 var table = tables[i];
                 delTableDb(table);
             }
+            
         } catch (err) {
             console.log(err);
         }
@@ -213,6 +230,7 @@ define(function (require, exports, module) {
 
     // Updates specific row in a table in db    
     function updateTableRowDb(filePath, table, value, keyName) {
+        console.log("INSERTING DATA NOW...")
         if (typeof value === "object") {
             value = JSON.stringify(value);
         }
@@ -220,12 +238,18 @@ define(function (require, exports, module) {
         database.transaction(function (tx) {
             value = value.toString();
             tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
-            null,
+            function (tx, results) {
+                console.log("INSERTED DATA INTO TABLE ", table);
+            },
             function (tx, error) {
+                console.log(error);
+                
                 // Entry already exists--overwrite it via update
                 if (error.code === 6) {
                     tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
-                    null,
+                    function (tx, results) {
+                        console.log("UPDATED TABLE " + table + " WITH NEW DATA")
+                    },
                     function (tx, error) {
                         console.log(error);
                     });
@@ -233,7 +257,7 @@ define(function (require, exports, module) {
 
                 // Storage capacity reached for table--make some room, try again
                 if (error.code === 4) {
-                    delRowsDb(null, true);
+                    delRows(null, true);
 
                     tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
                     null,
@@ -246,66 +270,60 @@ define(function (require, exports, module) {
         });
     }
 
+    var sendDocText = function (filePath, docTextToSync) {
+
+        var compressedDocText = RawDeflate.deflate(He.encode(docTextToSync.toString()));
+        
+        updateTableRowDb(filePath, "unsaved_doc_changes", docTextToSync, "str__DocTxt");
+    };
+    
     // This is the 'Save Change Data to DB' function
-    var sendChangeHistoryDb = function(cursorPos, scrollPos, curHistoryObjStr, currentTxtDeflated, fullFilePath) {
+    var sendChangeHistory = function(cursorPos, scrollPos, curHistoryObjStr, fullFilePath) {
+        
         var values = [
             cursorPos,
             scrollPos,
-            curHistoryObjStr,
-            currentTxtDeflated
-        ];
+            curHistoryObjStr
+        ],
+            result = new $.Deferred();
         
         if (!database) {
             console.log("Database error! No database loaded!");
         } else {
             try {
-                for (var i = 0; i < 4; i++) {
+                for (var i = 0; i < 3; i++) {
                     updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
                 }
+                result.resolve();
+                console.log("finished iterating through change data")
             } catch (err) {
                 console.log("Database error! ", err);
+                result.reject();
             }
         }
+        
+        return result.promise();
     };
 
-    // Stashes a copy of the current document text, history, etc. in db
-    function captureUnsavedDocChanges(that) {    
-        // Extract latest change history from Editor        
-        var curRawTxtObj = He.encode(JSON.stringify(that._codeMirror.getHistory())),
-            currentTextObj = RawDeflate.deflate(curRawTxtObj),
-            currentTxt = that._codeMirror.getValue(),
-            fullPathToFile = that.document.file._path,
-            cursorPos = that.getCursorPos(),
-            scrollPos = that.getScrollPos(),
-            docTxtSpecialCharsEncoded = He.encode(currentTxt),
-            curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
+    // Copies currently closing documents text, history, etc. to db
+    function captureUnsavedDocChanges(that) {
+		console.log(that)
+		
+        // Extract latest change history data        
+        var curHistoryObj = RawDeflate.deflate(He.encode(JSON.stringify(that._masterEditor._codeMirror.getHistory()))),
+            fullPathToFile = that.file._path,
+            cursorPos = that._masterEditor.getCursorPos(),
+            scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
         
-        database.transaction(function (tx) { 
-            tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId=?', 
-                [fullPathToFile],
-                function (tx, results) {    
-                    if (results.rows.length > 0) {
-                        var savedTxt = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt));
-                        
-                        // Nothing new to record
-                        if (currentTxt === savedTxt) {
-                            
-                            return;
-                        }
-                    }
-                    try {
-                        sendChangeHistoryDb(cursorPos, scrollPos, currentTextObj, curTxtDeflated, fullPathToFile);
-                    } catch (err) {
-                        console.log(err);
-                    }
-                
-                    result.reject();
-                }, 
-                function (tx, error) {
-                    console.log(error);
-                }
-            );
+        database.transaction(function (tx) {
+            try {
+                sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile);
+                result.resolve(cursorPos, scrollPos, curHistoryObj, fullPathToFile);
+            } catch (err) {
+                console.log(err);
+                result.reject();
+            }
         });
         
         return result.promise();
@@ -313,8 +331,10 @@ define(function (require, exports, module) {
 
     exports.database = database;
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
-    exports.sendChangeHistoryDb = sendChangeHistoryDb;
-    exports.delRowsDb = delRowsDb;
-    exports.debouncedDbSync = debouncedDbSync;
-    exports.printContentsDb = printContentsDb;
+    exports.sendChangeHistory = sendChangeHistory;
+    exports.delRows = delRows;
+    exports.debouncedSync = debouncedSync;
+    exports.printSavedContents = printSavedContents; 
+    exports.sendDocText = sendDocText;
+    exports.wipeAll = wipeAll;
 });

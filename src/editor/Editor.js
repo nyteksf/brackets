@@ -522,7 +522,7 @@ define(function(require, exports, module) {
                         that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
                         that._resetText(docText, that, true);
-                        Db.delRowsDb(document.file._path);
+                        Db.delRows(document.file._path);
                     }
                 });
             });
@@ -1024,7 +1024,7 @@ define(function(require, exports, module) {
             // what the right Document API would be, though.
             if (hotClose) {
                 // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                //var syncChangesToDb = Db.debouncedDbSync(null, this);
+                //var syncChangesToDb = Db.debouncedSync(this);
                 //syncChangesToDb();
             }
 
@@ -1042,7 +1042,7 @@ define(function(require, exports, module) {
         // been a change synced from another editor
         
         if (hotClose) {
-            //var syncChangeToDb = Db.debouncedDbSync(null, this);
+            //var syncChangeToDb = Db.debouncedSync(this);
             //syncChangeToDb();
         }
 
@@ -1116,8 +1116,8 @@ define(function(require, exports, module) {
         this._codeMirror.on("keydown", _onKeyEvent);
         this._codeMirror.on("keypress", _onKeyEvent);
         this._codeMirror.on("keyup", _onKeyEvent);
-        
-        this._codeMirror.on("keydown", function () {
+		
+        this._codeMirror.on("keyup", function () {
             var openFilePath  = MainViewManager.getCurrentlyViewedPath('first-pane');
             var docToSync = DocumentManager.getOpenDocumentForPath(openFilePath);
             
@@ -1125,8 +1125,8 @@ define(function(require, exports, module) {
             docToSync._ensureMasterEditor();
             
             // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-            var syncChangesToDb = Db.debouncedDbSync(null, docToSync._masterEditor);
-            syncChangesToDb();
+            var syncChangesToDb = Db.debouncedSync(docToSync)
+			syncChangesToDb();
         });
         // FUTURE: if this list grows longer, consider making this a more generic mapping
         // NOTE: change is a "private" event--others shouldn't listen to it on Editor, only on
@@ -1260,10 +1260,10 @@ define(function(require, exports, module) {
                         } else {
                             that.setScrollPos(scrollPos.x, scrollPos.y);
                             
-                            // No changes; mark as clean by forcing save
+                            // No changes to doc, so mark as clean by forcing save
                             var docToSave = DocumentManager.getOpenDocumentForPath(that.document.file._path);
                             DocumentCommandHandlers.doSave(docToSave, true);
-                            Db.delRowsDb(that.document.file._path);
+                            Db.delRows(that.document.file._path);
                         } 
                     }, function (tx, error) {
                         console.log(error);

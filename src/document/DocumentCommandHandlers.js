@@ -770,7 +770,7 @@ define(function (require, exports, module) {
             file = docToSave.file;
 
         if (hotClose) {
-            Db.delRowsDb(file._path);
+            Db.delRows(file._path);
         }
 
         function handleError(error) {
@@ -1079,18 +1079,32 @@ define(function (require, exports, module) {
             settings;
     
         if (doc && !doc.isSaving) {
-            if (doc.isUntitled()) {
-                if (doc === activeDoc) {
-                    settings = {
-                        selections: activeEditor.getSelections(),
-                        scrollPos: activeEditor.getScrollPos()
-                    };
-                }
+			if (hotClose) {
+				// First save file, then wipe any associated history data
+				return doSave(doc)
+					.done(function () {
+						setTimeout(function () {
+							Db.delRows(doc.file._path)
+							.done(function () {
+								console.log("DONE DELETING ROWS! PROOF BELOW: ");
+								Db.printSavedContents(doc.file._path);
+							});
+						}, 2000);
+					});
+			} else {
+				if (doc.isUntitled()) {
+                	if (doc === activeDoc) {
+                    	settings = {
+                        	selections: activeEditor.getSelections(),
+                        	scrollPos: activeEditor.getScrollPos()
+                    	};
+                	}
 
-                return _doSaveAs(doc, settings);
-            } else {
-                return doSave(doc);
-            }
+                	return _doSaveAs(doc, settings);
+				} else {
+					return doSave(doc);
+				}
+			}
         }
 
         return $.Deferred().reject().promise();
@@ -1528,7 +1542,7 @@ define(function (require, exports, module) {
     function handleFileRename() {
         if (hotClose) {
             var fileName = MainViewManager.getCurrentlyViewedFile();
-            Db.delRowsDb(fileName._path);
+            Db.delRows(fileName._path);
         }
         
         // Prefer selected sidebar item (which could be a folder)
@@ -1659,7 +1673,7 @@ define(function (require, exports, module) {
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
                     if (hotClose) {
-                        Db.delRowsDb(thisFilePath);
+                        Db.delRows(thisFilePath);
                     }
                     
                     ProjectManager.deleteItem(entry);
