@@ -177,11 +177,15 @@ define(function (require, exports, module) {
 
     // Delete individual row from db
     function delTableRowDb(table, filePath) {
+		var result = new $.Deferred();
         database.transaction(function (tx) {
             tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"', [],
-            null,
+            function (tx, txResults) {
+				result.resolve();
+			},
             function (tx, error) {
                 console.log(error);
+				result.reject();
             });
         });
     }
@@ -189,13 +193,13 @@ define(function (require, exports, module) {
     // Select and remove specific rows from db by sessionId
     function delRows(filePath, limitReached) {
         var result = new $.Deferred();
-		
+
 		try {
 			if (limitReached) {
                 // Slash and burn all data in db
                 filePath = '*';
             }
-            
+
             var table;
             for (var i = 0; i < tables.length; i++) {
                 table = tables[i];
@@ -236,7 +240,10 @@ define(function (require, exports, module) {
 
     // Updates specific row in a table in db    
     function updateTableRowDb(filePath, table, value, keyName) {
+		var result = new $.Deferred();
+		
         console.log("INSERTING DATA NOW...")
+		
         if (typeof value === "object") {
             value = JSON.stringify(value);
         }
@@ -245,7 +252,8 @@ define(function (require, exports, module) {
             value = value.toString();
             tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
             function (tx, results) {
-                console.log("INSERTED DATA INTO TABLE ", table);
+                console.log("INSERTED DATA INTO TABLE ", table)
+				result.resolve();
             },
             function (tx, error) {
                 console.log(error);
@@ -255,34 +263,44 @@ define(function (require, exports, module) {
                     tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
                     function (tx, results) {
                         console.log("UPDATED TABLE " + table + " WITH NEW DATA")
+						result.resolve();
                     },
                     function (tx, error) {
                         console.log(error);
+						result.reject();
                     });
                 }
 
                 // Storage capacity reached for table--make some room, try again
                 if (error.code === 4) {
-                    delRows(null, true);
-
-                    tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
-                    null,
-                    function (tx, error) {
-                        console.log(error);
-                    }
-                    );
+                    delRows(null, true)
+						.done(function () {
+							tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
+								function (tx, result) {
+									result.resolve();
+								},
+								function (tx, error) {
+									console.log(error);
+									result.reject();
+								}
+							);
+						});
                 }
             });
         });
-    }
+		
+		return result.promise();
+	}
 
     function sendDocText (filePath, docTextToSync) {
         var compressedDocText = docTextToSync.toString(),
 			result = new $.Deferred();
 		
 		try {
-			updateTableRowDb(filePath, "unsaved_doc_changes", docTextToSync, "str__DocTxt");
-			result.resolve();
+			updateTableRowDb(filePath, "unsaved_doc_changes", docTextToSync, "str__DocTxt")
+				.done(function () {
+					result.resolve();
+				});
 		} catch  (err) {
 			console.log(err);
 			result.reject();
@@ -293,35 +311,38 @@ define(function (require, exports, module) {
     
     // This is the 'Save Change Data to DB' function
     var sendChangeHistory = function(cursorPos, scrollPos, curHistoryObjStr, fullFilePath) {
-        
         var values = [
-            cursorPos,
-            scrollPos,
-            curHistoryObjStr
-        ],
+				cursorPos,
+				scrollPos,
+				curHistoryObjStr
+        	],
             result = new $.Deferred();
         
         if (!database) {
             console.log("Database error! No database loaded!");
         } else {
             try {
-                for (var i = 0; i < 3; i++) {
-                    updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
-                }
-                result.resolve();
-                console.log("finished iterating through change data")
+                
+				for (var i = 0; i < 3; i++) {
+                    updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i])
+                	
+					if (i === 2) {
+						result.resolve();
+					}
+				}
             } catch (err) {
                 console.log("Database error! ", err);
                 result.reject();
             }
         }
-        
+
         return result.promise();
     };
 
+
     // Copies currently closing documents text, history, etc. to db
     function captureUnsavedDocChanges(that) {
-        // Extract latest change history data        
+        // Extract latest change history data
         var curHistoryObj = RawDeflate.deflate(He.encode(JSON.stringify(that._masterEditor._codeMirror.getHistory()))),
 			curDocText = RawDeflate.deflate(He.encode(that._masterEditor._codeMirror.getValue())),
             fullPathToFile = that.file._path,
@@ -331,9 +352,9 @@ define(function (require, exports, module) {
         
         try {
 			sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
-				.then(function () {
+				.done(function () {
 					sendDocText(fullPathToFile, curDocText)
-						.then(function () {
+						.done(function () {
 							console.log("DONE UPDATING TABLES");
 							result.resolve();
 						});
