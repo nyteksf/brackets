@@ -45,11 +45,18 @@
   *                                                                   *
   * ----------------------------------------------------------------- *
   *                                                                   *
-  *     This module features database config info, and methods		  *
-  *		for db instantiation and CRUD. Keyup events trigger a sync	  *
-  *		of all history data to the database.It interacts with the 	  *
-  *		editor while shadowing the assigned codemirror in order to	  *
-  *		preserve any unsaved doc changes that occur.				  *
+  *     The db module interacts with the editor while shadowing its   *
+  *		assigned codemirror for a given doc in order to preserve any  *
+  *		unsaved changes. This module features database config	 	  *
+  *		info, and methods for db instantiation and CRUD. There are	  * 
+  *		four tables created in total amounting to 500MB in total. 	  *
+  *		These tables are each respectively named "cursorpos_coords",  *
+  *		"scrollpos_coords", "undo_redo_history" and 				  *
+  *		"unsaved_doc_changes". In order, these contain the last	 	  *
+  *		known document information as related to cursor	  			  *
+  *		and scroll positioning, as well as the undo/redo history 	  *
+  *		and document text. Keyup events trigger the syncing of all	  *
+  *		current history data to the database.		 				  *
   *                                                                   *
   \*******************************************************************/
 define(function (require, exports, module) {
@@ -105,7 +112,6 @@ define(function (require, exports, module) {
 			return function () {
 				clearTimeout(timer);
 				timer = setTimeout(function () {
-					console.log("DOC SYNCING")
 					captureUnsavedDocChanges(doc);
 				}, delay || 1250);
 				result.resolve();
@@ -270,11 +276,19 @@ define(function (require, exports, module) {
         });
     }
 
-    var sendDocText = function (filePath, docTextToSync) {
-
-        var compressedDocText = RawDeflate.deflate(He.encode(docTextToSync.toString()));
-        
-        updateTableRowDb(filePath, "unsaved_doc_changes", docTextToSync, "str__DocTxt");
+    function sendDocText (filePath, docTextToSync) {
+        var compressedDocText = docTextToSync.toString(),
+			result = new $.Deferred();
+		
+		try {
+			updateTableRowDb(filePath, "unsaved_doc_changes", docTextToSync, "str__DocTxt");
+			result.resolve();
+		} catch  (err) {
+			console.log(err);
+			result.reject();
+		}
+		
+		return result.promise();
     };
     
     // This is the 'Save Change Data to DB' function
@@ -307,24 +321,27 @@ define(function (require, exports, module) {
 
     // Copies currently closing documents text, history, etc. to db
     function captureUnsavedDocChanges(that) {
-		console.log(that)
-		
         // Extract latest change history data        
         var curHistoryObj = RawDeflate.deflate(He.encode(JSON.stringify(that._masterEditor._codeMirror.getHistory()))),
+			curDocText = RawDeflate.deflate(He.encode(that._masterEditor._codeMirror.getValue())),
             fullPathToFile = that.file._path,
             cursorPos = that._masterEditor.getCursorPos(),
             scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
         
-        database.transaction(function (tx) {
-            try {
-                sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile);
-                result.resolve(cursorPos, scrollPos, curHistoryObj, fullPathToFile);
-            } catch (err) {
-                console.log(err);
-                result.reject();
-            }
-        });
+        try {
+			sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
+				.then(function () {
+					sendDocText(fullPathToFile, curDocText)
+						.then(function () {
+							console.log("DONE UPDATING TABLES");
+							result.resolve();
+						});
+				});
+        } catch (err) {
+            console.log(err);
+            result.reject();
+        }
         
         return result.promise();
     }
