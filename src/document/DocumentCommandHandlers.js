@@ -1541,6 +1541,7 @@ define(function (require, exports, module) {
     /** Show a textfield to rename whatever is currently selected in the sidebar (or current doc if nothing else selected) */
     function handleFileRename() {
         if (hotClose) {
+			// Wipe away any saved doc change data
             var fileName = MainViewManager.getCurrentlyViewedFile();
             Db.delRows(fileName._path);
         }
@@ -1650,7 +1651,7 @@ define(function (require, exports, module) {
         var entry = ProjectManager.getSelectedItem(),
             thisFilePath = entry._path;
         
-        Dialogs.showModalDialog(
+		Dialogs.showModalDialog(
             DefaultDialogs.DIALOG_ID_EXT_DELETED,
             Strings.CONFIRM_DELETE_TITLE,
             StringUtils.format(
@@ -1672,7 +1673,8 @@ define(function (require, exports, module) {
         )
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
-                    if (hotClose) {
+                    // Wipe away any saved doc change data
+					if (hotClose) {
                         Db.delRows(thisFilePath);
                     }
                     

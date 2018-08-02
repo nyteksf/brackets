@@ -3025,7 +3025,7 @@ define(function(require, exports, module) {
             });
         });
     });
-    
+
     // Define public API
     exports.Editor = Editor;
     exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;

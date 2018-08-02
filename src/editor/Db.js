@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  *
  */
- 
+
   /*******************************************************************\
   *                                                                   *
   *       WebSQL/SQLite3 500 MB Persistence of Unsaved Changes        *
@@ -48,15 +48,17 @@
   *     The db module interacts with the editor while shadowing its   *
   *		assigned codemirror for a given doc in order to preserve any  *
   *		unsaved changes. This module features database config	 	  *
-  *		info, and methods for db instantiation and CRUD. There are	  * 
+  *		info, and methods for db instantiation and CRUD. There are	  *
   *		four tables created in total amounting to 500MB in total. 	  *
   *		These tables are each respectively named "cursorpos_coords",  *
   *		"scrollpos_coords", "undo_redo_history" and 				  *
   *		"unsaved_doc_changes". In order, these contain the last	 	  *
   *		known document information as related to cursor	  			  *
   *		and scroll positioning, as well as the undo/redo history 	  *
-  *		and document text. Keyup events trigger the syncing of all	  *
-  *		current history data to the database.		 				  *
+  *		and document text. Change data is stored by full filepath 	  *
+  *		which is used as the sessionId. Keyup events in a focused 	  *
+  *		editor are what trigger syncing of all current history 		  *
+  *		data to the database. 									      *
   *                                                                   *
   \*******************************************************************/
 define(function (require, exports, module) {
@@ -83,12 +85,12 @@ define(function (require, exports, module) {
         DB_VERSION = '1.0',
         DB_DESC    = 'Feature: Hot Close',
         DB_SIZE_MB = 500;
-        
-    var database   = window.openDatabase(DB_NAME, 
-                                    DB_VERSION, 
-                                    DB_DESC, 
+
+    var database   = window.openDatabase(DB_NAME,
+                                    DB_VERSION,
+                                    DB_DESC,
                                     DB_SIZE_MB * 1024 * 1024);
-    
+
     // Static db references
     var tables = [
             "cursorpos_coords",
@@ -108,7 +110,7 @@ define(function (require, exports, module) {
     function debouncedSync(doc, delay) {
 		var result = new $.Deferred();
 		try {
-			
+
 			return function () {
 				clearTimeout(timer);
 				timer = setTimeout(function () {
@@ -120,7 +122,7 @@ define(function (require, exports, module) {
 			console.log(err);
 			result.reject();
 		}
-		
+
 		return result.promise();
     };
 
@@ -205,12 +207,12 @@ define(function (require, exports, module) {
                 table = tables[i];
                 delTableRowDb(table, filePath);
             }
-            result.resolve();	
+            result.resolve();
         } catch (err) {
             console.log(err);
 			result.reject();
         }
-		
+
 		return result.promise();
     }
 
@@ -232,7 +234,7 @@ define(function (require, exports, module) {
                 var table = tables[i];
                 delTableDb(table);
             }
-            
+
         } catch (err) {
             console.log(err);
         }
@@ -241,9 +243,9 @@ define(function (require, exports, module) {
     // Updates specific row in a table in db    
     function updateTableRowDb(filePath, table, value, keyName) {
 		var result = new $.Deferred();
-		
+
         console.log("INSERTING DATA NOW...")
-		
+
         if (typeof value === "object") {
             value = JSON.stringify(value);
         }
@@ -257,7 +259,7 @@ define(function (require, exports, module) {
             },
             function (tx, error) {
                 console.log(error);
-                
+
                 // Entry already exists--overwrite it via update
                 if (error.code === 6) {
                     tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
@@ -292,8 +294,10 @@ define(function (require, exports, module) {
 		return result.promise();
 	}
 
-    function sendDocText (filePath, docTextToSync) {
-        var compressedDocText = docTextToSync.toString(),
+	// Send/update changes to document text in db
+    function sendDocText (docTextToSync, filePath) {
+		
+        var compressedDocText = RawDeflate.deflate(He.encode(docTextToSync.toString())),
 			result = new $.Deferred();
 		
 		try {
@@ -309,23 +313,25 @@ define(function (require, exports, module) {
 		return result.promise();
     };
     
-    // This is the 'Save Change Data to DB' function
+    // Send/update changes in doc related metadata in db  
     var sendChangeHistory = function(cursorPos, scrollPos, curHistoryObjStr, fullFilePath) {
-        var values = [
-				cursorPos,
-				scrollPos,
-				curHistoryObjStr
-        	],
-            result = new $.Deferred();
-        
+		var values = [],
+			result = new $.Deferred();
+
+		curHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(curHistoryObjStr)));
+		
+		values.push(curHistoryObjStr);
+		values.push(cursorPos);
+		values.push(scrollPos);
+		
         if (!database) {
             console.log("Database error! No database loaded!");
         } else {
             try {
-                
+
 				for (var i = 0; i < 3; i++) {
                     updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i])
-                	
+
 					if (i === 2) {
 						result.resolve();
 					}
@@ -343,17 +349,25 @@ define(function (require, exports, module) {
     // Copies currently closing documents text, history, etc. to db
     function captureUnsavedDocChanges(that) {
         // Extract latest change history data
+		/*
         var curHistoryObj = RawDeflate.deflate(He.encode(JSON.stringify(that._masterEditor._codeMirror.getHistory()))),
 			curDocText = RawDeflate.deflate(He.encode(that._masterEditor._codeMirror.getValue())),
             fullPathToFile = that.file._path,
             cursorPos = that._masterEditor.getCursorPos(),
             scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
-        
+		*/
+		var curHistoryObj = that._masterEditor._codeMirror.getHistory(),
+			curDocText = that._masterEditor._codeMirror.getValue(),
+            fullPathToFile = that.file._path,
+            cursorPos = that._masterEditor.getCursorPos(),
+            scrollPos = that._masterEditor.getScrollPos(),
+            result = new $.Deferred();
+
         try {
 			sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
 				.done(function () {
-					sendDocText(fullPathToFile, curDocText)
+					sendDocText(curDocText, fullPathToFile)
 						.done(function () {
 							console.log("DONE UPDATING TABLES");
 							result.resolve();
@@ -363,7 +377,7 @@ define(function (require, exports, module) {
             console.log(err);
             result.reject();
         }
-        
+
         return result.promise();
     }
 
