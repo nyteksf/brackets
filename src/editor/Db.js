@@ -296,7 +296,6 @@ define(function (require, exports, module) {
 
 	// Send/update changes to document text in db
     function sendDocText (docTextToSync, filePath) {
-		
         var compressedDocText = RawDeflate.deflate(He.encode(docTextToSync.toString())),
 			result = new $.Deferred();
 		
@@ -314,15 +313,19 @@ define(function (require, exports, module) {
     };
     
     // Send/update changes in doc related metadata in db  
-    var sendChangeHistory = function(cursorPos, scrollPos, curHistoryObjStr, fullFilePath) {
+    var sendChangeHistory = function(cursorPos, scrollPos, historyObjStr, fullFilePath) {
 		var values = [],
+			encodedHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
 			result = new $.Deferred();
-
-		curHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(curHistoryObjStr)));
 		
-		values.push(curHistoryObjStr);
+		// Indexing values for input to db
+		values.push(encodedHistoryObjStr);
 		values.push(cursorPos);
 		values.push(scrollPos);
+		
+		console.log("sendChangeHistory()")
+		console.log(historyObjStr, fullFilePath, cursorPos, scrollPos)
+		console.log("sendChangeHistory()")
 		
         if (!database) {
             console.log("Database error! No database loaded!");
@@ -363,7 +366,7 @@ define(function (require, exports, module) {
             cursorPos = that._masterEditor.getCursorPos(),
             scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
-
+		
         try {
 			sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
 				.done(function () {
