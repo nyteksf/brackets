@@ -300,7 +300,7 @@ define(function (require, exports, module) {
 			result = new $.Deferred();
 		
 		try {
-			updateTableRowDb(filePath, "unsaved_doc_changes", docTextToSync, "str__DocTxt")
+			updateTableRowDb(filePath, "unsaved_doc_changes", compressedDocText, "str__DocTxt")
 				.done(function () {
 					result.resolve();
 				});
@@ -316,17 +316,23 @@ define(function (require, exports, module) {
     var sendChangeHistory = function(cursorPos, scrollPos, historyObjStr, fullFilePath) {
 		var values = [],
 			encodedHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
-			result = new $.Deferred();
-		
+			encodedCursorPos = RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
+            encodedScrollPos = RawDeflate.deflate(He.encode(JSON.stringify(scrollPos))),
+            result = new $.Deferred();
+      
+        values.push(encodedCursorPos);
+        values.push(encodedScrollPos);
+        values.push(encodedHistoryObjStr);
+	
+        /*
 		// Indexing values for input to db
-		values.push(encodedHistoryObjStr);
-		values.push(cursorPos);
-		values.push(scrollPos);
-		
-		console.log("sendChangeHistory()")
-		console.log(historyObjStr, fullFilePath, cursorPos, scrollPos)
-		console.log("sendChangeHistory()")
-		
+		var values = [
+            encodedHistoryObjStr,
+            encodedCursorPos,
+            encodedScrollPos
+        ];
+        */
+        
         if (!database) {
             console.log("Database error! No database loaded!");
         } else {
@@ -335,6 +341,7 @@ define(function (require, exports, module) {
 				for (var i = 0; i < 3; i++) {
                     updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i])
 
+                    // Done
 					if (i === 2) {
 						result.resolve();
 					}
@@ -352,14 +359,6 @@ define(function (require, exports, module) {
     // Copies currently closing documents text, history, etc. to db
     function captureUnsavedDocChanges(that) {
         // Extract latest change history data
-		/*
-        var curHistoryObj = RawDeflate.deflate(He.encode(JSON.stringify(that._masterEditor._codeMirror.getHistory()))),
-			curDocText = RawDeflate.deflate(He.encode(that._masterEditor._codeMirror.getValue())),
-            fullPathToFile = that.file._path,
-            cursorPos = that._masterEditor.getCursorPos(),
-            scrollPos = that._masterEditor.getScrollPos(),
-            result = new $.Deferred();
-		*/
 		var curHistoryObj = that._masterEditor._codeMirror.getHistory(),
 			curDocText = that._masterEditor._codeMirror.getValue(),
             fullPathToFile = that.file._path,

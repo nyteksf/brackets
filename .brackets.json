@@ -42,6 +42,6 @@
             "linting.enabled": false
         }
     },
-    "spaceUnits": 2,
+    "spaceUnits": 4,
     "useTabChar": false
 }

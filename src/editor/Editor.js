@@ -63,8 +63,6 @@
 define(function(require, exports, module) {
     "use strict";
     
-    var Window = window;
-    
     var AnimationUtils = require("utils/AnimationUtils"),
         Async = require("utils/Async"),
         CodeMirror = require("thirdparty/CodeMirror/lib/codemirror"),
@@ -517,11 +515,11 @@ define(function(require, exports, module) {
                 function (tx, results) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
-                            savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
+                            savedDocTextDecoded = He.decode(RawDeflate.inflate(savedDocTxt));
                     
                         that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
-                        that._resetText(docText, that, true);
+                        that._resetText(docText, that);
                         Db.delRows(document.file._path);
                     }
                 });
@@ -1217,15 +1215,16 @@ define(function(require, exports, module) {
         
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();
-        
+
         if (hotClose) {  // Attempt to load any unsaved changes
             Db.database.transaction(function (tx) {
                 // Restore saved undo/redo history from DB
                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
-                        
                         if (results.rows.length > 0) {
-                            that._codeMirror.setHistory(JSON.parse(He.decode(window.RawDeflate.inflate(results.rows["0"].str__DocHistory))));
+                            var docHistory = JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory)));
+                            
+                            that._codeMirror.setHistory(docHistory);
                         } else {
                             // Mark the document clean.
                             that._codeMirror.markClean();
@@ -1237,10 +1236,9 @@ define(function(require, exports, module) {
                 
                 tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
-                        
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
-                            var savedCursorPos = JSON.parse(results.rows[0].int__CursorPos);
+                            var savedCursorPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__CursorPos)));
                             
                             that.setCursorPos(savedCursorPos);
                         } else {
@@ -1255,7 +1253,8 @@ define(function(require, exports, module) {
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
-                            var savedScrollPos = JSON.parse(results.rows[0].int__ScrollPos);
+                            var savedScrollPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__ScrollPos)));
+                            
                             that.setScrollPos(savedScrollPos.x, savedScrollPos.y);
                         } else {
                             that.setScrollPos(scrollPos.x, scrollPos.y);
