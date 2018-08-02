@@ -73,14 +73,6 @@ define(function (require, exports, module) {
         He = require("thirdparty/he");
 
     // Config settings
-    var HOT_CLOSE = "hotClose";
-
-    PreferencesManager.definePreference(HOT_CLOSE, "boolean", true, {
-        description: Strings.DESCRIPTION_HOT_CLOSE
-    });
-
-    var hotClose = PreferencesManager.get(HOT_CLOSE);
-
     var DB_NAME    = 'change_history_db',
         DB_VERSION = '1.0',
         DB_DESC    = 'Feature: Hot Close',
@@ -105,6 +97,15 @@ define(function (require, exports, module) {
             "str__DocTxt"
         ];
 
+    // Initialize 'hot close' setting
+    var HOT_CLOSE = "hotClose";
+
+    PreferencesManager.definePreference(HOT_CLOSE, "boolean", true, {
+        description: Strings.DESCRIPTION_HOT_CLOSE
+    });
+
+    var hotClose = PreferencesManager.get(HOT_CLOSE);
+    
     // Debounce syncing of new unsaved changes to db
     var timer = null;
     function debouncedSync(doc, delay) {
@@ -118,8 +119,8 @@ define(function (require, exports, module) {
 				}, delay || 1250);
 				result.resolve();
 			};
-		} catch (err) {
-			console.log(err);
+		} catch (error) {
+			console.log(error);
 			result.reject();
 		}
 
@@ -141,7 +142,7 @@ define(function (require, exports, module) {
 
     // Attempt creation of default tables if not present in DB already
     if (!database) {
-        console.log("Database error! Database 'change_history_db' has not been loaded!");
+        console.log("Database error: Database 'change_history_db' has not been loaded!");
     } else {
         for (var i = 0, len = tables.length; i < len; i++) {
             createTable(tables[i], keyNames[i]);
@@ -153,14 +154,15 @@ define(function (require, exports, module) {
         database.transaction(function (tx) {
             tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?', [filePath], function (tx, results) {
                 if (results.rows.length > 0) {
+                    // Decode and display data
                     if (keyName === "str__DocTxt") {
                         console.log(He.decode(RawDeflate.inflate(results.rows[0][keyName])));
                     } else {
-                        console.log(results.rows[0][keyName]);
+                        console.log(JSON.parse(He.decode(RawDeflate.inflate(results.rows[0][keyName]))));
                     }
-                } else { console.log("NOTHING TO PRINT: ROWS FOR FILE ARE EMPTY") }
+                }
             }, function (tx, error) {
-                console.log("Error: Could not print row from table '" + table + "'.");
+                console.log("Error: Could not print row from table '" + table + "'");
                 console.log("Error: ", error);
             });
         });
@@ -172,8 +174,8 @@ define(function (require, exports, module) {
             for (var i = 0, len = tables.length; i < len; i++) {
                 printRowContentsDb(tables[i], filePath, keyNames[i]);
             }
-        } catch (err) {
-            console.log(err);
+        } catch (error) {
+            console.log(error);
         }
     }
 
@@ -208,8 +210,8 @@ define(function (require, exports, module) {
                 delTableRowDb(table, filePath);
             }
             result.resolve();
-        } catch (err) {
-            console.log(err);
+        } catch (error) {
+            console.log(error);
 			result.reject();
         }
 
@@ -235,16 +237,14 @@ define(function (require, exports, module) {
                 delTableDb(table);
             }
 
-        } catch (err) {
-            console.log(err);
+        } catch (error) {
+            console.log(error);
         }
     }
 
     // Updates specific row in a table in db    
     function updateTableRowDb(filePath, table, value, keyName) {
 		var result = new $.Deferred();
-
-        console.log("INSERTING DATA NOW...")
 
         if (typeof value === "object") {
             value = JSON.stringify(value);
@@ -254,7 +254,6 @@ define(function (require, exports, module) {
             value = value.toString();
             tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
             function (tx, results) {
-                console.log("INSERTED DATA INTO TABLE ", table)
 				result.resolve();
             },
             function (tx, error) {
@@ -264,7 +263,6 @@ define(function (require, exports, module) {
                 if (error.code === 6) {
                     tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
                     function (tx, results) {
-                        console.log("UPDATED TABLE " + table + " WITH NEW DATA")
 						result.resolve();
                     },
                     function (tx, error) {
@@ -305,8 +303,8 @@ define(function (require, exports, module) {
 				.done(function () {
 					result.resolve();
 				});
-		} catch  (err) {
-			console.log(err);
+		} catch  (error) {
+			console.log(error);
 			result.reject();
 		}
 		
@@ -331,15 +329,15 @@ define(function (require, exports, module) {
             try {
                 
 				for (var i = 0; i < 3; i++) {
-                    updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i])
+                    updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
 
                     // Data transmission done
 					if (i === 2) {
 						result.resolve();
 					}
 				}
-            } catch (err) {
-                console.log("Database error! ", err);
+            } catch (error) {
+                console.log("Database error: ", error);
                 result.reject();
             }
         }
@@ -363,21 +361,19 @@ define(function (require, exports, module) {
 				.done(function () {
 					sendDocText(curDocText, fullPathToFile)
 						.done(function () {
-							console.log("DONE UPDATING TABLES")
-                        
-                            // Undo push to db:
-                            // Document has either been undone back to clean state
-                            // or document has no new change despite recent keyup event
+                            // Undo latest push to db:
+                            // Document was just undone back to clean state
+                            // or has no new changes in editor despite recent keyup event
                             if (!that.isDirty) {
-                                // Remove that documents change history data
-                                delRows(fullPathToFile)
+                                // Remove doc change history data
+                                delRows(fullPathToFile);
                             }
                             
                             result.resolve();
 						});
 				});
-        } catch (err) {
-            console.log(err);
+        } catch (error) {
+            console.log(error);
             result.reject();
         }
 

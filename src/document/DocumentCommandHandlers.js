@@ -495,37 +495,16 @@ define(function (require, exports, module) {
 
                 // If a line and column number were given, position the editor accordingly.
                 if (fileInfo.line !== null) {
-                    if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                        fileInfo.column = 1;
-                    }
-                    
-                    // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
-                    EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                                                                    fileInfo.column - 1,
-                                                                    true);
-                }
-                // result.resolve(file);
-                
-                if (fileInfo.line !== null) {
                         if (fileInfo.column === null || (fileInfo.column <= 0)) {
                             fileInfo.column = 1;
                         }
-                    }
-            
-                if (!hotClose) {
-                    // If a line and column number were given, position the editor accordingly.
-                    if (fileInfo.line !== null) {
+                    
                         // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
                         EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
                                                                         fileInfo.column - 1,
                                                                         true);
                     }
-                    result.resolve(file);
-                    
-                } else {
-                    result.resolve(file);
-                
-                } 
+                    result.resolve(file); 
             })
             .fail(function () {
                 result.reject();
@@ -1085,10 +1064,6 @@ define(function (require, exports, module) {
 					.done(function () {
 						setTimeout(function () {
 							Db.delRows(doc.file._path)
-							.done(function () {
-								console.log("DONE DELETING ROWS! PROOF BELOW: ");
-								Db.printSavedContents(doc.file._path);
-							});
 						}, 2000);
 					});
 			} else {

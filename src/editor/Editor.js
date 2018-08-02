@@ -164,7 +164,7 @@ define(function(require, exports, module) {
 
     // Persist unsaved changes within DB
     var HOT_CLOSE = "hotClose",
-        hotClose = PreferencesManager.get(HOT_CLOSE);
+        hotClose  = PreferencesManager.get(HOT_CLOSE);
     
     // CodeMirror, html mode, set some tags do not close automatically.
     // We do not initialize "dontCloseTags" because otherwise we would overwrite the default behavior of CodeMirror.
@@ -343,10 +343,8 @@ define(function(require, exports, module) {
      * @param {!Object} options If specified, contains editor options that can be passed to CodeMirror
      */
     function Editor(document, makeMasterEditor, container, range, options) {
-        var self     = this,
-            hotClose = PreferencesManager.get(HOT_CLOSE);
-
-        var isReadOnly = (options && options.isReadOnly) || !document.editable;
+        var self       = this,
+            isReadOnly = (options && options.isReadOnly) || !document.editable;
 
         _instances.push(this); 
 
@@ -1020,12 +1018,6 @@ define(function(require, exports, module) {
             // FUTURE: Technically we should add a replaceRange() method to Document and go through
             // that instead of talking to its master editor directly. It's not clear yet exactly
             // what the right Document API would be, though.
-            if (hotClose) {
-                // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-                //var syncChangesToDb = Db.debouncedSync(this);
-                //syncChangesToDb();
-            }
-
             this._duringSync = true;
             this.document._masterEditor._applyChanges(changeList);
             this._duringSync = false;
@@ -1038,10 +1030,7 @@ define(function(require, exports, module) {
         // we're the ground truth; nothing else to do, since Document listens directly to us
         // note: this change might have been a real edit made by the user, OR this might have
         // been a change synced from another editor
-        if (hotClose) {
-            // console.log(this.document.isDirty)
-        }
-
+        
         // The "editorChange" event is mostly for the use of the CodeHintManager.
         // It differs from the normal "change" event, that it's actually publicly usable,
         // whereas the "change" event should be listened to on the document. Also the
@@ -1121,7 +1110,7 @@ define(function(require, exports, module) {
             docToSync._ensureMasterEditor();
             
             // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
-            var syncChangesToDb = Db.debouncedSync(docToSync)
+            var syncChangesToDb = Db.debouncedSync(docToSync);
 			syncChangesToDb();
         });
         // FUTURE: if this list grows longer, consider making this a more generic mapping
