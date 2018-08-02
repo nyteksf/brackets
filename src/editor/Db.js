@@ -194,7 +194,8 @@ define(function (require, exports, module) {
 
     // Select and remove specific rows from db by sessionId
     function delRows(filePath, limitReached) {
-        var result = new $.Deferred();
+        var table,
+            result = new $.Deferred();
 
 		try {
 			if (limitReached) {
@@ -202,7 +203,6 @@ define(function (require, exports, module) {
                 filePath = '*';
             }
 
-            var table;
             for (var i = 0; i < tables.length; i++) {
                 table = tables[i];
                 delTableRowDb(table, filePath);
@@ -273,7 +273,8 @@ define(function (require, exports, module) {
                     });
                 }
 
-                // Storage capacity reached for table--make some room, try again
+                // Code #4 means storage capacity reached for table 
+                // Must make some room, then try again
                 if (error.code === 4) {
                     delRows(null, true)
 						.done(function () {
@@ -323,25 +324,16 @@ define(function (require, exports, module) {
         values.push(encodedCursorPos);
         values.push(encodedScrollPos);
         values.push(encodedHistoryObjStr);
-	
-        /*
-		// Indexing values for input to db
-		var values = [
-            encodedHistoryObjStr,
-            encodedCursorPos,
-            encodedScrollPos
-        ];
-        */
         
         if (!database) {
             console.log("Database error! No database loaded!");
         } else {
             try {
-
+                
 				for (var i = 0; i < 3; i++) {
                     updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i])
 
-                    // Done
+                    // Data transmission done
 					if (i === 2) {
 						result.resolve();
 					}
@@ -371,8 +363,17 @@ define(function (require, exports, module) {
 				.done(function () {
 					sendDocText(curDocText, fullPathToFile)
 						.done(function () {
-							console.log("DONE UPDATING TABLES");
-							result.resolve();
+							console.log("DONE UPDATING TABLES")
+                        
+                            // Undo push to db:
+                            // Document has either been undone back to clean state
+                            // or document has no new change despite recent keyup event
+                            if (!that.isDirty) {
+                                // Remove that documents change history data
+                                delRows(fullPathToFile)
+                            }
+                            
+                            result.resolve();
 						});
 				});
         } catch (err) {

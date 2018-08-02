@@ -1038,10 +1038,8 @@ define(function(require, exports, module) {
         // we're the ground truth; nothing else to do, since Document listens directly to us
         // note: this change might have been a real edit made by the user, OR this might have
         // been a change synced from another editor
-        
         if (hotClose) {
-            //var syncChangeToDb = Db.debouncedSync(this);
-            //syncChangeToDb();
+            // console.log(this.document.isDirty)
         }
 
         // The "editorChange" event is mostly for the use of the CodeHintManager.
