@@ -513,7 +513,7 @@ define(function(require, exports, module) {
                 function (tx, results) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
-                            savedDocTextDecoded = He.decode(RawDeflate.inflate(savedDocTxt));
+                            savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
                     
                         that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
@@ -1209,7 +1209,7 @@ define(function(require, exports, module) {
                 tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
-                            var docHistory = JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory)));
+                            var docHistory = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows["0"].str__DocHistory)));
                             
                             that._codeMirror.setHistory(docHistory);
                         } else {
@@ -1225,7 +1225,7 @@ define(function(require, exports, module) {
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
-                            var savedCursorPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__CursorPos)));
+                            var savedCursorPos = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0].int__CursorPos)));
                             
                             that.setCursorPos(savedCursorPos);
                         } else {
@@ -1240,7 +1240,7 @@ define(function(require, exports, module) {
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
-                            var savedScrollPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__ScrollPos)));
+                            var savedScrollPos = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0].int__ScrollPos)));
                             
                             that.setScrollPos(savedScrollPos.x, savedScrollPos.y);
                         } else {

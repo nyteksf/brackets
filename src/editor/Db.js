@@ -156,9 +156,9 @@ define(function (require, exports, module) {
                 if (results.rows.length > 0) {
                     // Decode and display data
                     if (keyName === "str__DocTxt") {
-                        console.log(He.decode(RawDeflate.inflate(results.rows[0][keyName])));
+                        console.log(He.decode(window.RawDeflate.inflate(results.rows[0][keyName])));
                     } else {
-                        console.log(JSON.parse(He.decode(RawDeflate.inflate(results.rows[0][keyName]))));
+                        console.log(JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0][keyName]))));
                     }
                 }
             }, function (tx, error) {
@@ -290,7 +290,7 @@ define(function (require, exports, module) {
 
 	// Send/update changes to document text in db
     function sendDocText (docTextToSync, filePath) {
-        var compressedDocText = RawDeflate.deflate(He.encode(docTextToSync.toString())),
+        var compressedDocText = window.RawDeflate.deflate(He.encode(docTextToSync.toString())),
 			result = new $.Deferred();
 		
 		try {
@@ -309,9 +309,9 @@ define(function (require, exports, module) {
     // Send/update changes in doc related metadata in db  
     var sendChangeHistory = function(cursorPos, scrollPos, historyObjStr, fullFilePath) {
 		var values = [],
-			encodedHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
-			encodedCursorPos = RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
-            encodedScrollPos = RawDeflate.deflate(He.encode(JSON.stringify(scrollPos))),
+			encodedHistoryObjStr = window.RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
+			encodedCursorPos = window.RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
+            encodedScrollPos = window.RawDeflate.deflate(He.encode(JSON.stringify(scrollPos))),
             result = new $.Deferred();
       
         values.push(encodedCursorPos);

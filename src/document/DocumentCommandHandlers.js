@@ -1063,7 +1063,7 @@ define(function (require, exports, module) {
 				return doSave(doc)
 					.done(function () {
 						setTimeout(function () {
-							Db.delRows(doc.file._path)
+							Db.delRows(doc.file._path);
 						}, 2000);
 					});
 			} else {
