@@ -257,22 +257,8 @@ define(function (require, exports, module) {
 				result.resolve();
             },
             function (tx, error) {
-                console.log(error);
-
-                // Entry already exists--overwrite it via update
-                if (error.code === 6) {
-                    tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
-                    function (tx, results) {
-						result.resolve();
-                    },
-                    function (tx, error) {
-                        console.log(error);
-						result.reject();
-                    });
-                }
-
-                // Code #4 means storage capacity reached for table 
-                // Must make some room, then try again
+                // Error code #4 indicates storage capacity reached for currently used table 
+                // Make some room for new data, then try again when done
                 if (error.code === 4) {
                     delRows(null, true)
 						.done(function () {
@@ -281,12 +267,21 @@ define(function (require, exports, module) {
 									result.resolve();
 								},
 								function (tx, error) {
-									console.log(error);
 									result.reject();
 								}
 							);
 						});
-                }
+                // Error code #6, due to SQL constraints, indicates an entry already exists in a given row
+                // Overwrite the row via Update
+                } else if (error.code === 6) {
+                    tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
+                    function (tx, results) {
+						result.resolve();
+                    },
+                    function (tx, error) {
+						result.reject();
+                    });
+                } else { console.log(error); }
             });
         });
 		
