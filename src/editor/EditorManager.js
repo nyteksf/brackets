@@ -66,8 +66,13 @@ define(function (require, exports, module) {
         InlineTextEditor    = require("editor/InlineTextEditor").InlineTextEditor,
         Strings             = require("strings"),
         LanguageManager     = require("language/LanguageManager"),
-        DeprecationWarning  = require("utils/DeprecationWarning");
-
+        DeprecationWarning  = require("utils/DeprecationWarning"),
+        CompressionUtils    = require("thirdparty/rawinflate"),
+        CompressionUtils    = require("thirdparty/rawdeflate"),
+        He		            = require("thirdparty/he"),
+        Dialogs             = require("widgets/Dialogs"),
+        DefaultDialogs      = require("widgets/DefaultDialogs"),
+		Db		            = require("editor/Db");
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -119,8 +124,6 @@ define(function (require, exports, module) {
         return doc && doc._masterEditor;
     }
 
-
-
     /**
      * Updates _viewStateCache from the given editor's actual current state
      * @private
@@ -142,7 +145,6 @@ define(function (require, exports, module) {
             editor.restoreViewState(viewState);
         }
     }
-
 
 	/**
      * Editor focus handler to change the currently active editor
@@ -753,6 +755,39 @@ define(function (require, exports, module) {
         return result.promise();
     }
 
+	function _toggleLocalHistory() {
+		console.log("TOGGLED LOCAL HISTORY!");
+		
+		Dialogs.showModalDialog(
+                DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
+                Strings.SAVE_CLOSE_TITLE,
+                Strings.SAVE_CLOSE_MESSAGE,
+				/*StringUtils.format(
+                    Strings.SAVE_CLOSE_MESSAGE,
+                    StringUtils.breakableUrl(filename)
+                ),*/
+                [
+                    {
+                        className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+                        id        : Dialogs.DIALOG_BTN_DONTSAVE,
+                        text      : Strings.DONT_SAVE
+                    },
+                    {
+                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                        id        : Dialogs.DIALOG_BTN_CANCEL,
+                        text      : Strings.CANCEL
+                    },
+                    {
+                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                        id        : Dialogs.DIALOG_BTN_OK,
+                        text      : Strings.SAVE
+                    }
+                ]
+            )
+				.done(function() {
+					console.log("DONE");
+				})
+	}
 
     /**
      * file removed from pane handler.
@@ -799,6 +834,8 @@ define(function (require, exports, module) {
     });
     CommandManager.register(Strings.CMD_JUMPTO_DEFINITION, Commands.NAVIGATE_JUMPTO_DEFINITION, _doJumpToDef);
 
+	CommandManager.register(Strings.CMD_TOGGLE_LOCAL_HISTORY, Commands.TOGGLE_LOCAL_HISTORY, _toggleLocalHistory);
+	
     // Create PerfUtils measurement
     PerfUtils.createPerfMeasurement("JUMP_TO_DEFINITION", "Jump-To-Definiiton");
 

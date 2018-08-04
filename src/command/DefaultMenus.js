@@ -282,13 +282,17 @@ define(function (require, exports, module) {
         // editor_cmenu.addMenuItem(Commands.NAVIGATE_JUMPTO_DEFINITION);
         editor_cmenu.addMenuItem(Commands.TOGGLE_QUICK_EDIT);
         editor_cmenu.addMenuItem(Commands.TOGGLE_QUICK_DOCS);
+		
         editor_cmenu.addMenuDivider();
         editor_cmenu.addMenuItem(Commands.EDIT_CUT);
         editor_cmenu.addMenuItem(Commands.EDIT_COPY);
         editor_cmenu.addMenuItem(Commands.EDIT_PASTE);
-
-        editor_cmenu.addMenuDivider();
-        editor_cmenu.addMenuItem(Commands.EDIT_SELECT_ALL);
+		
+		editor_cmenu.addMenuDivider();
+		editor_cmenu.addMenuItem(Commands.TOGGLE_LOCAL_HISTORY);
+		
+		editor_cmenu.addMenuDivider();
+		editor_cmenu.addMenuItem(Commands.EDIT_SELECT_ALL);
 
         var inline_editor_cmenu = Menus.registerContextMenu(Menus.ContextMenuIds.INLINE_EDITOR_MENU);
         inline_editor_cmenu.addMenuItem(Commands.TOGGLE_QUICK_EDIT);

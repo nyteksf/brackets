@@ -422,6 +422,7 @@ define({
     "CMD_GOTO_FIRST_PROBLEM"              : "Go to First Problem",
     "CMD_TOGGLE_QUICK_EDIT"               : "Quick Edit",
     "CMD_TOGGLE_QUICK_DOCS"               : "Quick Docs",
+	"CMD_TOGGLE_LOCAL_HISTORY"			  : "Local History",
     "CMD_QUICK_EDIT_PREV_MATCH"           : "Previous Match",
     "CMD_QUICK_EDIT_NEXT_MATCH"           : "Next Match",
     "CMD_CSS_QUICK_EDIT_NEW_RULE"         : "New Rule",
