@@ -133,6 +133,9 @@ define({
     "SAVE_CLOSE_TITLE"                  : "Save Changes",
     "SAVE_CLOSE_MESSAGE"                : "Do you want to save the changes you made in the document <span class='dialog-filename'>{0}</span>?",
     "SAVE_CLOSE_MULTI_MESSAGE"          : "Do you want to save your changes to the following files?",
+    "LOCAL_HISTORY_TITLE"               : "Local History",
+    "LOCAL_HISTORY_MESSAGE"             : "Would you like to view Local History for document <span class='dialog-filename'>{0}</span>?",
+    "LOCAL_HISTORY_OPEN_FILE_MESSAGE"        : "Please select a prior version of your file below, and click 'Open File' to proceed",
     "EXT_MODIFIED_TITLE"                : "External Changes",
     "CONFIRM_DELETE_TITLE"              : "Confirm Delete",
     "CONFIRM_FILE_DELETE"               : "Are you sure you want to delete the file <span class='dialog-filename'>{0}</span>?",
@@ -155,6 +158,7 @@ define({
     "SAVE_AS"                           : "Save As\u2026",
     "SAVE_AND_OVERWRITE"                : "Overwrite",
     "DELETE"                            : "Delete",
+    "DELETE_ALL"                        : "Delete All",
     "BUTTON_YES"                        : "Yes",
     "BUTTON_NO"                         : "No",
 
@@ -177,7 +181,7 @@ define({
     "REPLACE_WITHOUT_UNDO_WARNING_TITLE": "Replace Without Undo",
     "REPLACE_WITHOUT_UNDO_WARNING"      : "Because more than {0} files need to be changed, {APP_NAME} will modify unopened files on disk.<br />You won't be able to undo replacements in those files.",
     "BUTTON_REPLACE_WITHOUT_UNDO"       : "Replace Without Undo",
-
+    
     "OPEN_FILE"                         : "Open File",
     "SAVE_FILE_AS"                      : "Save File",
     "CHOOSE_FOLDER"                     : "Choose a folder",

@@ -72,7 +72,9 @@ define(function (require, exports, module) {
         He		            = require("thirdparty/he"),
         Dialogs             = require("widgets/Dialogs"),
         DefaultDialogs      = require("widgets/DefaultDialogs"),
-		Db		            = require("editor/Db");
+        FileViewController  = require("project/FileViewController"),
+        StringUtils         = require("utils/StringUtils"),
+        FileUtils           = require("file/FileUtils");
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -755,39 +757,104 @@ define(function (require, exports, module) {
         return result.promise();
     }
 
+    /**
+     * Toggles Local History dialog allowing for coarse grained version control
+     */
 	function _toggleLocalHistory() {
+        var savedDocs = [],
+            result = new $.Deferred();
+        
 		console.log("TOGGLED LOCAL HISTORY!");
+        
+        var pathToOpenFile  = MainViewManager.getCurrentlyViewedPath('first-pane'),
+            doc             = DocumentManager.getOpenDocumentForPath(pathToOpenFile);
+            
+        // Ensure doc backed with master editor
+        doc._ensureMasterEditor();
 		
-		Dialogs.showModalDialog(
-                DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
-                Strings.SAVE_CLOSE_TITLE,
-                Strings.SAVE_CLOSE_MESSAGE,
-				/*StringUtils.format(
-                    Strings.SAVE_CLOSE_MESSAGE,
+        var filename       = FileUtils.getBaseName(doc.file._path),
+            activePaneId   = 'first-pane';
+        
+        // Prompt user to open Local History for open document
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+            Strings.LOCAL_HISTORY_TITLE,
+                StringUtils.format(
+                    Strings.LOCAL_HISTORY_MESSAGE,
                     StringUtils.breakableUrl(filename)
-                ),*/
-                [
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_LEFT,
-                        id        : Dialogs.DIALOG_BTN_DONTSAVE,
-                        text      : Strings.DONT_SAVE
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                        id        : Dialogs.DIALOG_BTN_CANCEL,
-                        text      : Strings.CANCEL
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                        id        : Dialogs.DIALOG_BTN_OK,
-                        text      : Strings.SAVE
-                    }
-                ]
-            )
-				.done(function() {
-					console.log("DONE");
-				})
-	}
+                ),
+            [
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                    id        : Dialogs.DIALOG_BTN_CANCEL,
+                    text      : Strings.CANCEL
+                },
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                    id        : Dialogs.DIALOG_BTN_OK,
+                    text      : Strings.OK
+                }
+            ]
+        )
+            .done(function (id) {
+                if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                    // Do NOOP
+                    result.reject();
+                } else {
+                    // Or load second dialog here which lists files for selection
+                    Dialogs.showModalDialog(
+                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                        Strings.LOCAL_HISTORY_TITLE,
+                        Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE,
+                        [
+                            {
+                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                                id        : Dialogs.DIALOG_BTN_CANCEL,
+                                text      : Strings.CANCEL
+                            },
+                            {
+                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                                id        : Dialogs.DIALOG_BTN_DELETEALL,
+                                text      : Strings.DELETE_ALL
+                            },
+                            {
+                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                id        : Dialogs.DIALOG_BTN_OK,
+                                text      : Strings.OPEN_FILE
+                            }
+                        ]
+                    )
+                        .done(function (id) {
+                            console.log("OPENING FILE....")
+                            
+                            // ...resetText(docTextFromDb);
+                            
+                            result.resolve();
+                        });
+                }
+            });
+    }
+    
+    //var defaultFilePath = "~/.config/Brackets/lh/" + 'EditorManager.js';
+            
+                                // NOTE: NEED TO CONSOLE.LOG() 'commandData' TO FIGURE OUT HOW TO REPRODUCE HERE
+                                // Opens current doc, but does not add to working set
+                            /*
+                                DocumentCommandHandlers.handleDocumentOpen(commandData)
+                                    .done(function () {
+                                        console.log("DONE OPENING FILE")
+                                    });
+                            */
+                                // OR TRY e.g.: .openFileAndAddToWorkingSet(fullPath, paneId)
+                                // Opens current doc, but DOES add to working set too
+
+                                // TESTING HOW THIS WORKS:
+                            /*
+                                FileViewController.openFileAndAddToWorkingSet(pathToOpenFile, activePaneId)
+                                    .done(function () {
+                                        console.log("DONE OPENING FILE")
+                                    }); 
+                                    */
 
     /**
      * file removed from pane handler.

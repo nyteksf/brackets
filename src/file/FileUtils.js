@@ -215,6 +215,24 @@ define(function (require, exports, module) {
     }
 
     /**
+     * Creates an HTML string from a list of files to be used in the selection of a Local 
+     * History file; allowing for version control.
+     * @param {Array.<string>} Array of filenames with paths to display.
+     */
+    function makeDialogClickableFileList(fileList) { 
+        // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
+        var result = "<ul class='clickable-dialog-list'>";
+        fileList.forEach(function (file) {
+            result += "<li><span class='clickable-dialog-filename' filePath='" + file[0] + "'>";
+            result += file[1];
+            result += "</span></li>";
+        });
+        result += "</ul>";
+        
+        return result;
+    }
+    
+    /**
      * Creates an HTML string for a list of files to be reported on, suitable for use in a dialog.
      * @param {Array.<string>} Array of filenames or paths to display.
      */

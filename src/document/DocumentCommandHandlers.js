@@ -57,7 +57,10 @@ define(function (require, exports, module) {
         StatusBar           = require("widgets/StatusBar"),
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
-        _                   = require("thirdparty/lodash");
+        _                   = require("thirdparty/lodash"),
+        He                  = require("thirdparty/he"),
+        CompressionUtils    = require("thirdparty/rawdeflate"),
+        Db                  = require("editor/Db");
 
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
@@ -734,8 +737,17 @@ define(function (require, exports, module) {
      */
     function doSave(docToSave, force) {
         var result = new $.Deferred(),
-            file = docToSave.file;
-
+            file = docToSave.file,
+            filePath = file._path,
+            docTextToStore = docToSave._masterEditor._codeMirror.getValue(),
+            fileTimestamp  = new Date();
+        
+        // MOVE ABOVE VARS INTO PREFERENCE CONTROLLED BLOCK, AND;
+        // MOVE BELOW DB TX INTO PREFERENCE CONTROLLED BLOCK: 
+        // 
+        // if (localHistory) { ... code here ... } 
+        Db.sendDocText(docTextToStore, filePath, fileTimestamp);
+        
         function handleError(error) {
             _showSaveFileError(error, file.fullPath)
                 .done(function () {
