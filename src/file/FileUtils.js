@@ -220,14 +220,17 @@ define(function (require, exports, module) {
      * @param {Array.<string>} Array of filenames with paths to display.
      */
     function makeDialogClickableFileList(fileList) { 
+        console.log(fileList)
         // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
-        var result = "<ul class='clickable-dialog-list'>";
+        var result = "<div id='localHistoryContainer' style='position:relative; padding:20px;'>";
+	    result += "<ul class='clickable-dialog-list' style='list-style:none; top:50%; background:white;'>";
         fileList.forEach(function (file) {
-            result += "<li><span class='clickable-dialog-filename' filePath='" + file[0] + "'>";
+            result += "<li><span class='clickable-dialog-filename' style='width:100%; background:white; color:black !important; border:1px solid black;' timestamp='" + file[1] + "'>";
             result += file[1];
             result += "</span></li>";
         });
         result += "</ul>";
+        result += "</div>";
         
         return result;
     }
@@ -569,6 +572,7 @@ define(function (require, exports, module) {
     exports.makeDialogFileList             = makeDialogFileList;
     exports.readAsText                     = readAsText;
     exports.writeText                      = writeText;
+    exports.makeDialogClickableFileList    = makeDialogClickableFileList;
     exports.convertToNativePath            = convertToNativePath;
     exports.convertWindowsPathToUnixPath   = convertWindowsPathToUnixPath;
     exports.getNativeBracketsDirectoryPath = getNativeBracketsDirectoryPath;

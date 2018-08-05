@@ -74,7 +74,8 @@ define(function (require, exports, module) {
         DefaultDialogs      = require("widgets/DefaultDialogs"),
         FileViewController  = require("project/FileViewController"),
         StringUtils         = require("utils/StringUtils"),
-        FileUtils           = require("file/FileUtils");
+        FileUtils           = require("file/FileUtils"),
+        Db                  = require("editor/Db");
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -801,36 +802,82 @@ define(function (require, exports, module) {
                     // Do NOOP
                     result.reject();
                 } else {
-                    // Or load second dialog here which lists files for selection
-                    Dialogs.showModalDialog(
-                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
-                        Strings.LOCAL_HISTORY_TITLE,
-                        Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE,
-                        [
-                            {
-                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                                id        : Dialogs.DIALOG_BTN_CANCEL,
-                                text      : Strings.CANCEL
+                    // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
+                    Db.database.transaction(function (tx) {
+                        tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
+                            [pathToOpenFile],
+                            function (tx, results) {
+                                if (results.rows.length > 0) {
+                                    var fileListForDialog = [];
+                                    for (var row in results.rows) {
+                                        var res = results.rows[row];
+                                        if (typeof res === "object") {
+                                            var docData = [];
+                                            docData.push(res.str__DocTxt);
+                                            docData.push(res.str__Timestamp);
+                                        
+                                            fileListForDialog.push(docData);
+                                        }
+                                    }
+                                    
+                                    
+                                    // Or load second dialog here which lists files for selection
+                                    Dialogs.showModalDialog(
+                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                        Strings.LOCAL_HISTORY_TITLE,
+                                        Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE + FileUtils.makeDialogClickableFileList(fileListForDialog),
+                                        [
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                                                id        : Dialogs.DIALOG_BTN_CANCEL,
+                                                text      : Strings.CANCEL
+                                            },
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                                                id        : Dialogs.DIALOG_BTN_DELETEALL,
+                                                text      : Strings.DELETE_ALL
+                                            },
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                                id        : Dialogs.DIALOG_BTN_OK,
+                                                text      : Strings.OPEN_FILE
+                                            }
+                                        ]
+                                    )
+                                        .done(function (id) {
+                                            if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                                                // Do NOOP
+                                                result.reject();
+                                            } 
+                                            else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
+                                                console.log("DELETE")
+
+                                                Db.delRows(pathToOpenFile, null, true)
+                                                    .done(function () {
+                                                        console.log("DELETE: NEXT TO LAST STEP")
+
+                                                        Db.printSavedContents(pathToOpenFile, true)
+
+                                                        console.log("DELETE: FINAL STEP")
+
+                                                        result.resolve();
+                                                    });
+                                            } else {
+                                                console.log("OPEN FILE")
+                                                // ...resetText(docTextFromDb);
+
+                                                result.resolve();
+                                            }
+                                        });
+                                } else {
+                                    console.log("LOCAL HISTORY: NO RECORDS PRESENT")
+                                }
                             },
-                            {
-                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                                id        : Dialogs.DIALOG_BTN_DELETEALL,
-                                text      : Strings.DELETE_ALL
-                            },
-                            {
-                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                                id        : Dialogs.DIALOG_BTN_OK,
-                                text      : Strings.OPEN_FILE
+                            function (tx, error) {
+                                console.log(error);
                             }
-                        ]
-                    )
-                        .done(function (id) {
-                            console.log("OPENING FILE....")
-                            
-                            // ...resetText(docTextFromDb);
-                            
-                            result.resolve();
-                        });
+                        );
+                    });
                 }
             });
     }
