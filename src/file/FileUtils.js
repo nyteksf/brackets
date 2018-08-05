@@ -225,7 +225,7 @@ define(function (require, exports, module) {
         var result = "<div id='localHistoryContainer' style='position:relative; padding:20px;'>";
 	    result += "<ul class='clickable-dialog-list' style='list-style:none; top:50%; background:white;'>";
         fileList.forEach(function (file) {
-            result += "<li><span class='clickable-dialog-filename' style='width:100%; background:white; color:black !important; border:1px solid black;' timestamp='" + file[1] + "'>";
+            result += "<li onclick='console.log(this)'><span class='clickable-dialog-filename' style='width:100%; background:white; color:black !important; border:1px solid black;' timestamp='" + file[1] + "'>";
             result += file[1];
             result += "</span></li>";
         });

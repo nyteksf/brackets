@@ -820,7 +820,6 @@ define(function (require, exports, module) {
                                         }
                                     }
                                     
-                                    
                                     // Or load second dialog here which lists files for selection
                                     Dialogs.showModalDialog(
                                         DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
