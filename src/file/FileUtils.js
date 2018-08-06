@@ -214,6 +214,15 @@ define(function (require, exports, module) {
         return DocumentCommandHandlers.showFileOpenError(name, path);
     }
     
+    /*
+    Modal (div.modal-wrapper)
+    window.context.all[2206].children["0"].childNodes["0"].childNodes[5]
+    window.context.all.HTMLAllCollection[2206].children["0"].childNodes["0"].childNodes[5]
+    window.context.body.children[9]
+    BUTTON: (button.dialog-button.btn.primary)
+    window.context.body.children[9].children["0"].children["0"].children[2].children[2]
+    */
+    
     /**
      * Creates an HTML string from a list of files to be used in the selection of a Local 
      * History file; allowing for version control.
@@ -221,24 +230,20 @@ define(function (require, exports, module) {
      */
     function makeDialogClickableFileList(fileList) { 
         // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
-        var result = "<div id='localHistoryContainer' style='padding-top:9px;'>";
-	    result += "<ul class='clickable-dialog-list' style='list-style:none; border:1px solid black; border-radius:5px; margin:0 auto; width:100%; font-weight:bold; background:&num;F5F5F5;'>";
+        var result = "<div id='localHistoryContainer'>";
+	    result += "<ul class='clickable-dialog-list'>";
         fileList.forEach(function (file) {
-            result += "<li onclick='$(&quot;&num;localHistoryContainer li&quot;).css(&quot;background&quot;,&quot;&num;F5F5F5&quot;); $(&quot;&num;localHistoryContainer li&quot;).css(&quot;color&quot;,&quot;&num;333&quot;); $(this).css(&quot;background&quot;,&quot;&num;6d84b4&quot;); $(this).css(&quot;color&quot;,&quot;&num;F5F5F5&quot;);' style='width:100%; border:1px solid &num;333; padding-left:9px; width:100%; background:&num;F5F5F5; color:&num;333; font-weight: bold;' timestamp='" + file[1] + "'>";
+            // onclick steps:
+            //   0) Remove any prior click evt listeners on OPEN FILE button
+            //   1) Add new click evt listener to btn
+            //   2) Remove any active item CSS from modal <li>s
+            //   3) Add active item CSS to currently clicked <li> only
+            result += "<li class='LHListItem' onclick='$(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ console.log(&quot;CLICK EVENT!&quot;) }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
             result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
             result += "</li>";
         });
         result += "</ul>";
-        result += "</div>";
-        
-       /*
-            fileList.forEach(function (file) {
-            result += "<li onclick='$(this).css(&quot;background&quot;,&quot;purple&quot;);' style='width:100%; border:1px solid &num;333;'><span class='clickable-dialog-filename' style='padding-left:9px; width:100%; background:&num;F5F5F5; color:&num;000; font-weight: bold;' timestamp='" + file[1] + "'>";
-            result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
-            result += "</span></li>";
-        });
-       */
-        
+        result += "</div>"; 
         
         return result;
     }

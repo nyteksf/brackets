@@ -1968,6 +1968,49 @@ textarea.exclusions-editor {
     }
 }
 
+/* Local History modal */
+#localHistoryContainer {
+    padding-top: 9px;
+}
+
+#localHistoryContainer ul {
+    margin-right:  25px;
+    list-style:    none;
+    border:        1px solid black;
+    border-radius: 5px;
+    margin:        0 auto; 
+    width:         100%; 
+    font-weight:   bold; 
+    background:    #F5F5F5;
+}
+
+/* WAS LI, NOT LHListItem */
+#localHistoryContainer .LHListItem:first-child {
+    border-top-right-radius: 5px;
+    border-top-left-radius:  5px;
+}
+
+#localHistoryContainer .LHListItem:last-child {
+    border-bottom-right-radius: 5px;
+    border-bottom-left-radius:  5px;
+}
+
+#localHistoryContainer .LHListItem {
+    background:   #F5F5F5;
+    color:        #333333;
+    width:        100%; 
+    border:       1px solid #333;
+    padding-left: 9px; 
+    background:   #F5F5F5;
+    font-weight:  bold;
+}
+
+.activeLHModalLi {
+    background: #6D84B4 !important;
+    color:      #F5F5F5 !important;
+}
+
+
 @-webkit-keyframes autocomplete {
     0%   { opacity: 0.6; -webkit-transform: translate3d(0, 0, 0) scale(0.6); }
     100% { opacity: 1; -webkit-transform: translate3d(0, 0, 0) scale(1); }

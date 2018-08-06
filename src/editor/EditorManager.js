@@ -802,6 +802,8 @@ define(function (require, exports, module) {
                     // Do NOOP
                     result.reject();
                 } else {
+                    console.log($(document))
+                    
                    // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
                     Db.database.transaction(function (tx) {
                         tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
@@ -858,7 +860,7 @@ define(function (require, exports, module) {
                                             } else {
                                                 console.log("OPEN FILE")
                                                 // ...resetText(docTextFromDb);
-
+                                                
                                                 result.resolve();
                                             }
                                         });
@@ -920,7 +922,6 @@ define(function (require, exports, module) {
             handleFileRemoved(removedFiles);
         }
     }
-
 
     // Set up event dispatching
     EventDispatcher.makeEventDispatcher(exports);
