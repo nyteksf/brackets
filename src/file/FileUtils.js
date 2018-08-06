@@ -213,24 +213,32 @@ define(function (require, exports, module) {
                                               "Please use DocumentCommandHandlers.showFileOpenError() instead.");
         return DocumentCommandHandlers.showFileOpenError(name, path);
     }
-
+    
     /**
      * Creates an HTML string from a list of files to be used in the selection of a Local 
      * History file; allowing for version control.
      * @param {Array.<string>} Array of filenames with paths to display.
      */
     function makeDialogClickableFileList(fileList) { 
-        console.log(fileList)
         // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
-        var result = "<div id='localHistoryContainer' style='position:relative; padding:20px;'>";
-	    result += "<ul class='clickable-dialog-list' style='list-style:none; top:50%; background:white;'>";
+        var result = "<div id='localHistoryContainer' style='padding-top:9px;'>";
+	    result += "<ul class='clickable-dialog-list' style='list-style:none; border:1px solid black; border-radius:5px; margin:0 auto; width:100%; font-weight:bold; background:&num;F5F5F5;'>";
         fileList.forEach(function (file) {
-            result += "<li onclick='console.log(this)'><span class='clickable-dialog-filename' style='width:100%; background:white; color:black !important; border:1px solid black;' timestamp='" + file[1] + "'>";
-            result += file[1];
-            result += "</span></li>";
+            result += "<li onclick='$(&quot;&num;localHistoryContainer li&quot;).css(&quot;background&quot;,&quot;&num;F5F5F5&quot;); $(&quot;&num;localHistoryContainer li&quot;).css(&quot;color&quot;,&quot;&num;333&quot;); $(this).css(&quot;background&quot;,&quot;&num;6d84b4&quot;); $(this).css(&quot;color&quot;,&quot;&num;F5F5F5&quot;);' style='width:100%; border:1px solid &num;333; padding-left:9px; width:100%; background:&num;F5F5F5; color:&num;333; font-weight: bold;' timestamp='" + file[1] + "'>";
+            result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
+            result += "</li>";
         });
         result += "</ul>";
         result += "</div>";
+        
+       /*
+            fileList.forEach(function (file) {
+            result += "<li onclick='$(this).css(&quot;background&quot;,&quot;purple&quot;);' style='width:100%; border:1px solid &num;333;'><span class='clickable-dialog-filename' style='padding-left:9px; width:100%; background:&num;F5F5F5; color:&num;000; font-weight: bold;' timestamp='" + file[1] + "'>";
+            result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
+            result += "</span></li>";
+        });
+       */
+        
         
         return result;
     }

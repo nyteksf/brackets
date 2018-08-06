@@ -135,7 +135,7 @@ define({
     "SAVE_CLOSE_MULTI_MESSAGE"          : "Do you want to save your changes to the following files?",
     "LOCAL_HISTORY_TITLE"               : "Local History",
     "LOCAL_HISTORY_MESSAGE"             : "Would you like to view Local History for document <span class='dialog-filename'>{0}</span>?",
-    "LOCAL_HISTORY_OPEN_FILE_MESSAGE"        : "Please select a prior version of your file below, and click 'Open File' to proceed",
+    "LOCAL_HISTORY_OPEN_FILE_MESSAGE"   : "Please select a version of your file below, and click 'Open File' to proceed",
     "EXT_MODIFIED_TITLE"                : "External Changes",
     "CONFIRM_DELETE_TITLE"              : "Confirm Delete",
     "CONFIRM_FILE_DELETE"               : "Are you sure you want to delete the file <span class='dialog-filename'>{0}</span>?",

@@ -802,7 +802,7 @@ define(function (require, exports, module) {
                     // Do NOOP
                     result.reject();
                 } else {
-                    // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
+                   // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
                     Db.database.transaction(function (tx) {
                         tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
                             [pathToOpenFile],
@@ -849,15 +849,9 @@ define(function (require, exports, module) {
                                                 result.reject();
                                             } 
                                             else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
-                                                console.log("DELETE")
-
                                                 Db.delRows(pathToOpenFile, null, true)
                                                     .done(function () {
-                                                        console.log("DELETE: NEXT TO LAST STEP")
-
                                                         Db.printSavedContents(pathToOpenFile, true)
-
-                                                        console.log("DELETE: FINAL STEP")
 
                                                         result.resolve();
                                                     });
