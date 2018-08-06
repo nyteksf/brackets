@@ -802,8 +802,6 @@ define(function (require, exports, module) {
                     // Do NOOP
                     result.reject();
                 } else {
-                    console.log($(document))
-                    
                    // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
                     Db.database.transaction(function (tx) {
                         tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
@@ -822,7 +820,7 @@ define(function (require, exports, module) {
                                         }
                                     }
                                     
-                                    // Or load second dialog here which lists files for selection
+                                    // Or load second dialog here listing files for selection
                                     Dialogs.showModalDialog(
                                         DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
                                         Strings.LOCAL_HISTORY_TITLE,
@@ -854,8 +852,28 @@ define(function (require, exports, module) {
                                                 Db.delRows(pathToOpenFile, null, true)
                                                     .done(function () {
                                                         Db.printSavedContents(pathToOpenFile, true)
-
-                                                        result.resolve();
+                                                        
+                                                        Dialogs.showModalDialog(
+                                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                                        Strings.LOCAL_HISTORY_TITLE,
+                                                            StringUtils.format(
+                                                            Strings.LOCAL_HISTORY_DELALL_MESSAGE,
+                                                            StringUtils.breakableUrl(filename)
+                                                        ),
+                                                        [
+                                                            {
+                                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                                                id        : Dialogs.DIALOG_BTN_OK,
+                                                                text      : Strings.OK
+                                                            }
+                                                        ]
+                                                    )
+                                                        .done(function (id) {
+                                                            if (id === Dialogs.DIALOG_BTN_OK) {
+                                                                // Do NOOP
+                                                                result.reject();
+                                                            } 
+                                                        });
                                                     });
                                             } else {
                                                 console.log("OPEN FILE")
@@ -864,8 +882,28 @@ define(function (require, exports, module) {
                                                 result.resolve();
                                             }
                                         });
-                                } else {
-                                    console.log("LOCAL HISTORY: NO RECORDS PRESENT")
+                                } else {  // No backups for current file in Local History
+                                    Dialogs.showModalDialog(
+                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                        Strings.LOCAL_HISTORY_TITLE,
+                                            StringUtils.format(
+                                                Strings.LOCAL_HISTORY_EMPTY_MESSAGE,
+                                                StringUtils.breakableUrl(filename)
+                                            ),
+                                        [
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                                id        : Dialogs.DIALOG_BTN_OK,
+                                                text      : Strings.OK
+                                            }
+                                        ]
+                                    )
+                                        .done(function (id) {
+                                            if (id === Dialogs.DIALOG_BTN_OK) {
+                                                // Do NOOP
+                                                result.reject();
+                                            } 
+                                        });
                                 }
                             },
                             function (tx, error) {
@@ -875,6 +913,8 @@ define(function (require, exports, module) {
                     });
                 }
             });
+        
+            return result.promise();
     }
     
     //var defaultFilePath = "~/.config/Brackets/lh/" + 'EditorManager.js';

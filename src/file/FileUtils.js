@@ -240,6 +240,7 @@ define(function (require, exports, module) {
             //   3) Add active item CSS to currently clicked <li> only
             result += "<li class='LHListItem' onclick='$(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ console.log(&quot;CLICK EVENT!&quot;) }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
             result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
+            result += "<a href='#' onclick='function(evt){ evt.preventDefault(); evt.stopPropagation(); }' class='LHListItemXClose' style='font-weight:bold; margin-left:5px; color:&num;333; border:1px solid #num;333;'>&times;</a>";
             result += "</li>";
         });
         result += "</ul>";
