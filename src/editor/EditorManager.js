@@ -878,6 +878,9 @@ define(function (require, exports, module) {
                                                 result.reject();
                                             } 
                                             else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
+                                                setTimeout(function() {
+                                                    $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                                }, 250);
                                                 Db.delRows(pathToOpenFile, null, true)
                                                     .done(function () {
                                                         Db.printSavedContents(pathToOpenFile, true);
@@ -910,6 +913,9 @@ define(function (require, exports, module) {
                                             }
                                         });
                                 } else {  // No backups for current file in Local History
+                                    setTimeout(function() {
+                                        $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                    }, 250);
                                     Dialogs.showModalDialog(
                                         DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
                                         Strings.LOCAL_HISTORY_TITLE,

@@ -756,7 +756,7 @@ define(function (require, exports, module) {
                             
                             var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
                             
-                            // Diff latest to prevent accumulation of identical copies
+                            // Diff latest to prevent accumulation of identical doc copies
                             if (docTextToStore !== decodedSavedDocTxt) {
                                 Db.sendDocText(docTextToStore, filePath, fileTimestamp);
                             }
