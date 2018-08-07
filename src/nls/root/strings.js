@@ -137,7 +137,7 @@ define({
     "LOCAL_HISTORY_MESSAGE"             : "Would you like to view Local History for document <span class='dialog-filename'>{0}</span>?",
     "LOCAL_HISTORY_OPEN_FILE_MESSAGE"   : "Please select a version of your file below, and click 'Open File' to proceed",
     "LOCAL_HISTORY_EMPTY_MESSAGE"       : "No prior versions saved. Local History is currently empty for document <span class='dialog-filename'>{0}</span>.",
-    "LOCAL_HISTORY_DELALL_MESSAGE"      : "Local History for document <span class='dialog-filename'>{0}</span> has been successfully deleted.",
+    "LOCAL_HISTORY_DELALL_MESSAGE"      : "Local History versions of document <span class='dialog-filename'>{0}</span> have been successfully deleted.",
     "EXT_MODIFIED_TITLE"                : "External Changes",
     "CONFIRM_DELETE_TITLE"              : "Confirm Delete",
     "CONFIRM_FILE_DELETE"               : "Are you sure you want to delete the file <span class='dialog-filename'>{0}</span>?",
