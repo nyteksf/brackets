@@ -1970,7 +1970,8 @@ textarea.exclusions-editor {
 
 /* Local History modal */
 #localHistoryContainer {
-    padding-top: 9px;
+    padding-top: 12px;
+    margin-right: 14px;
 }
 
 #localHistoryContainer ul {
@@ -1980,11 +1981,21 @@ textarea.exclusions-editor {
     border-radius: 5px;
     margin:        0 auto; 
     width:         100%; 
-    font-weight:   bold; 
+    font-weight:   bold;
     background:    #F5F5F5;
 }
 
-/* WAS LI, NOT LHListItem */
+#localHistoryContainer .LHListItem {
+    background:   #F5F5F5;
+    color:        #333333;
+    width:        100%;
+    margin-right: 25px;
+    border:       1px solid #333;
+    padding-left: 9px; 
+    background:   #F5F5F5;
+    font-weight:  bold;
+}
+
 #localHistoryContainer .LHListItem:first-child {
     border-top-right-radius: 5px;
     border-top-left-radius:  5px;
@@ -1995,14 +2006,10 @@ textarea.exclusions-editor {
     border-bottom-left-radius:  5px;
 }
 
-#localHistoryContainer .LHListItem {
-    background:   #F5F5F5;
-    color:        #333333;
-    width:        100%; 
-    border:       1px solid #333;
-    padding-left: 9px; 
-    background:   #F5F5F5;
-    font-weight:  bold;
+#localHistoryContainer .LHListItemXClose {
+    font-weight: bold; 
+    margin-left: 5px;
+    color:       #333;
 }
 
 .activeLHModalLi {

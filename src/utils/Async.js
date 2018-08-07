@@ -582,7 +582,7 @@ define(function (require, exports, module) {
             });
         }
     };
-
+    
     // Define public API
     exports.doInParallel        = doInParallel;
     exports.doSequentially      = doSequentially;

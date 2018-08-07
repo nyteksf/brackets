@@ -75,6 +75,7 @@ define(function (require, exports, module) {
         FileViewController  = require("project/FileViewController"),
         StringUtils         = require("utils/StringUtils"),
         FileUtils           = require("file/FileUtils"),
+        Async               = require("thirdparty/async"),
         Db                  = require("editor/Db");
 
     /**
@@ -802,12 +803,15 @@ define(function (require, exports, module) {
                     // Do NOOP
                     result.reject();
                 } else {
-                   // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
+                    var limitedItemList = [];
+                    
+                    // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
                     Db.database.transaction(function (tx) {
                         tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
                             [pathToOpenFile],
                             function (tx, results) {
                                 if (results.rows.length > 0) {
+                                    console.log(results.rows.length + " rows found")
                                     var fileListForDialog = [];
                                     for (var row in results.rows) {
                                         var res = results.rows[row];
@@ -815,16 +819,36 @@ define(function (require, exports, module) {
                                             var docData = [];
                                             docData.push(res.str__DocTxt);
                                             docData.push(res.str__Timestamp);
-                                        
+                                            docData.push(pathToOpenFile);
+                                            
                                             fileListForDialog.push(docData);
                                         }
                                     }
                                     
-                                    // Or load second dialog here listing files for selection
+                                    // Accept only the latest 10 records displayed to DOM
+                                    if (fileListForDialog.length > 10) {
+                                        for (var i=0, len=10; i<len; i++) {
+                                            limitedItemList.push(fileListForDialog[fileListForDialog.length - 1]);
+                                            fileListForDialog.pop();
+                                        }
+                                        
+                                        console.log(fileListForDialog)
+                                        console.log(limitedItemList)
+                                        
+                                        for (var i=0, len=fileListForDialog.length; i<len; i=i+1) {
+                                            var table     = "local_history_doctxt",
+                                                filePath  = fileListForDialog[i][2],
+                                                timestamp = fileListForDialog[i][1];
+                                            
+                                            Db.delTableRowDb(table, filePath, timestamp);
+                                        }
+                                    } else { limitedItemList = fileListForDialog; }
+                                    
+                                    // Load second dialog listing Local History files for user selection
                                     Dialogs.showModalDialog(
                                         DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
                                         Strings.LOCAL_HISTORY_TITLE,
-                                        Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE + FileUtils.makeDialogClickableFileList(fileListForDialog),
+                                        Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE + FileUtils.makeDialogClickableFileList(limitedItemList),
                                         [
                                             {
                                                 className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
