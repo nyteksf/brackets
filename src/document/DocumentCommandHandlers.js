@@ -752,16 +752,10 @@ define(function (require, exports, module) {
                     [filePath], 
                     function (tx, results) {
                         if (results.rows.length > 0) {
-                            console.log(results.rows)
                             var lastKey = Object.keys(results.rows).pop();
                             
                             var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
                             
-                            console.log(docTextToStore)
-                            console.log("X-X-X-X-X-X-X_X_X_X")
-                            console.log(decodedSavedDocTxt)
-                            console.log(docTextToStore === decodedSavedDocTxt)
-                        
                             // Diff latest to prevent accumulation of identical copies
                             if (docTextToStore !== decodedSavedDocTxt) {
                                 Db.sendDocText(docTextToStore, filePath, fileTimestamp);
