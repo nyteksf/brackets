@@ -238,7 +238,7 @@ define(function (require, exports, module) {
             //   1) Add new click evt listener to btn
             //   2) Remove any active item CSS from modal <li>s
             //   3) Add active item CSS to currently clicked <li> only
-            result += "<li class='LHListItem' onclick='$(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ console.log(&quot;CLICK EVENT!&quot;) }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
+            result += "<li class='LHListItem' onclick='console.log(window.Db); $(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ console.log(&quot;CLICK EVENT!&quot;) }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
             result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
             result += "<a href='#' onclick='function(evt){ evt.preventDefault(); evt.stopPropagation(); }' class='LHListItemXClose' title='Delete'>&times;</a>";
             result += "</li>";

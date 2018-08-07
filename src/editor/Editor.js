@@ -79,7 +79,7 @@ define(function (require, exports, module) {
         ViewUtils          = require("utils/ViewUtils"),
         MainViewManager    = require("view/MainViewManager"),
         _                  = require("thirdparty/lodash");
-
+    
     /** Editor preferences */
 
     var CLOSE_BRACKETS      = "closeBrackets",

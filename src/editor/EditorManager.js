@@ -75,8 +75,10 @@ define(function (require, exports, module) {
         FileViewController  = require("project/FileViewController"),
         StringUtils         = require("utils/StringUtils"),
         FileUtils           = require("file/FileUtils"),
-        Async               = require("thirdparty/async"),
         Db                  = require("editor/Db");
+    
+        // Load DB utils globally
+        window.Db           = require("editor/Db");
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
