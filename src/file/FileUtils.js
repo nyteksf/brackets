@@ -228,7 +228,7 @@ define(function (require, exports, module) {
      * History file; allowing for version control.
      * @param {Array.<string>} Array of filenames with paths to display.
      */
-    function makeDialogClickableFileList(fileList) { 
+    function makeDialogClickableFileList(fileList) {
         // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
         var result = "<div id='localHistoryContainer'>";
 	    result += "<ul class='clickable-dialog-list'>";
@@ -238,17 +238,17 @@ define(function (require, exports, module) {
             //   1) Add new click evt listener to btn
             //   2) Remove any active item CSS from modal <li>s
             //   3) Add active item CSS to currently clicked <li> only
-            result += "<li class='LHListItem' onclick='console.log(window.Db); $(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ console.log(&quot;CLICK EVENT!&quot;) }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
+            result += "<li class='LHListItem' onclick='$(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ var activeLi = $(&quot;&num;localHistoryContainer&quot;).find(&quot;.activeLHModalLi&quot;); var timestamp = activeLi[0].attributes[2].value; var pathToOpenFile = MainViewManager.getCurrentlyViewedPath(&quot;first-pane&quot;), doc = DocumentManager.getOpenDocumentForPath(pathToOpenFile); Db.database.transaction(function(tx){ tx.executeSql(&quot;SELECT str__DocTxt FROM local_history_doctxt WHERE str__Timestamp=? AND sessionId=?&quot;, [timestamp, pathToOpenFile], function(tx,results) { var docText = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt)); doc._masterEditor._codeMirror.setValue(docText); doc._masterEditor._codeMirror.refresh(); doc._masterEditor._codeMirror.clearHistory(); doc._masterEditor._codeMirror.markClean(); }, function(tx,error){ console.log(error); }); });  }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
             result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
             result += "<a href='#' onclick='function(evt){ evt.preventDefault(); evt.stopPropagation(); }' class='LHListItemXClose' title='Delete'>&times;</a>";
             result += "</li>";
         });
         result += "</ul>";
-        result += "</div>"; 
-        
+        result += "</div>";
+
         return result;
     }
-    
+
     /**
      * Creates an HTML string for a list of files to be reported on, suitable for use in a dialog.
      * @param {Array.<string>} Array of filenames or paths to display.

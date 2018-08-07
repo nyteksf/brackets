@@ -77,8 +77,12 @@ define(function (require, exports, module) {
         FileUtils           = require("file/FileUtils"),
         Db                  = require("editor/Db");
     
-        // Load DB utils globally
-        window.Db           = require("editor/Db");
+        // Load globally for Local History
+        window.Db              = require("editor/Db"),
+        window.He              = require("thirdparty/he"),
+        window.MainViewManager = require("view/MainViewManager"),
+        window.DocumentManager = require("document/DocumentManager");
+        
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -833,9 +837,6 @@ define(function (require, exports, module) {
                                             limitedItemList.push(fileListForDialog[fileListForDialog.length - 1]);
                                             fileListForDialog.pop();
                                         }
-                                        
-                                        console.log(fileListForDialog)
-                                        console.log(limitedItemList)
                                         
                                         for (var i=0, len=fileListForDialog.length; i<len; i=i+1) {
                                             var table     = "local_history_doctxt",
