@@ -90,7 +90,7 @@ define(function (require, exports, module) {
      * @private
      */
     var _lastFocusedEditor = null;
-
+    
     /**
      * Registered inline-editor widget providers sorted descending by priority.
      * @see {@link #registerInlineEditProvider}.
@@ -115,14 +115,12 @@ define(function (require, exports, module) {
      */
     var _jumpToDefProviders = [];
 
-
     /**
      * DOM element to house any hidden editors created soley for inline widgets
      * @private
      * @type {jQuery}
      */
     var _$hiddenEditorsContainer;
-
 
     /**
      * Retrieves the visible full-size Editor for the currently opened file in the ACTIVE_PANE
@@ -173,6 +171,9 @@ define(function (require, exports, module) {
         exports.trigger("activeEditorChange", current, previous);
     }
 
+    var LOCAL_HISTORY = "localHistory",
+        localHistory  = PreferencesManager.get(LOCAL_HISTORY);
+    
     /**
      * Current File Changed handler
      * MainViewManager dispatches a "currentFileChange" event whenever the currently viewed
@@ -772,8 +773,6 @@ define(function (require, exports, module) {
         var savedDocs = [],
             result = new $.Deferred();
         
-		console.log("TOGGLED LOCAL HISTORY!");
-        
         var pathToOpenFile  = MainViewManager.getCurrentlyViewedPath('first-pane'),
             doc             = DocumentManager.getOpenDocumentForPath(pathToOpenFile);
             
@@ -821,7 +820,6 @@ define(function (require, exports, module) {
                             [pathToOpenFile],
                             function (tx, results) {
                                 if (results.rows.length > 0) {
-                                    console.log(results.rows.length + " rows found")
                                     var fileListForDialog = [];
                                     for (var row in results.rows) {
                                         var res = results.rows[row];
@@ -882,7 +880,7 @@ define(function (require, exports, module) {
                                             else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
                                                 Db.delRows(pathToOpenFile, null, true)
                                                     .done(function () {
-                                                        Db.printSavedContents(pathToOpenFile, true)
+                                                        Db.printSavedContents(pathToOpenFile, true);
                                                         
                                                         Dialogs.showModalDialog(
                                                         DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
@@ -907,9 +905,7 @@ define(function (require, exports, module) {
                                                         });
                                                     });
                                             } else {
-                                                console.log("OPEN FILE")
-                                                // ...resetText(docTextFromDb);
-                                                
+                                                // "File Open" case
                                                 result.resolve();
                                             }
                                         });
@@ -947,27 +943,6 @@ define(function (require, exports, module) {
         
             return result.promise();
     }
-    
-    //var defaultFilePath = "~/.config/Brackets/lh/" + 'EditorManager.js';
-            
-                                // NOTE: NEED TO CONSOLE.LOG() 'commandData' TO FIGURE OUT HOW TO REPRODUCE HERE
-                                // Opens current doc, but does not add to working set
-                            /*
-                                DocumentCommandHandlers.handleDocumentOpen(commandData)
-                                    .done(function () {
-                                        console.log("DONE OPENING FILE")
-                                    });
-                            */
-                                // OR TRY e.g.: .openFileAndAddToWorkingSet(fullPath, paneId)
-                                // Opens current doc, but DOES add to working set too
-
-                                // TESTING HOW THIS WORKS:
-                            /*
-                                FileViewController.openFileAndAddToWorkingSet(pathToOpenFile, activePaneId)
-                                    .done(function () {
-                                        console.log("DONE OPENING FILE")
-                                    }); 
-                                    */
 
     /**
      * file removed from pane handler.
@@ -1012,8 +987,10 @@ define(function (require, exports, module) {
         return _toggleInlineWidget(_inlineDocsProviders, Strings.ERROR_QUICK_DOCS_PROVIDER_NOT_FOUND);
     });
     CommandManager.register(Strings.CMD_JUMPTO_DEFINITION, Commands.NAVIGATE_JUMPTO_DEFINITION, _doJumpToDef);
-
-	CommandManager.register(Strings.CMD_TOGGLE_LOCAL_HISTORY, Commands.TOGGLE_LOCAL_HISTORY, _toggleLocalHistory);
+    
+    if (localHistory) {
+        CommandManager.register(Strings.CMD_TOGGLE_LOCAL_HISTORY, Commands.TOGGLE_LOCAL_HISTORY, _toggleLocalHistory);
+    }
 	
     // Create PerfUtils measurement
     PerfUtils.createPerfMeasurement("JUMP_TO_DEFINITION", "Jump-To-Definiiton");

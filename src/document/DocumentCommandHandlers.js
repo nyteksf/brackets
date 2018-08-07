@@ -139,6 +139,10 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference("defaultExtension", "string", "", {
         excludeFromHints: true
     });
+    
+    var LOCAL_HISTORY = "localHistory",
+        localHistory  = PreferencesManager.get(LOCAL_HISTORY);
+    
     EventDispatcher.makeEventDispatcher(exports);
 
     /**
@@ -742,11 +746,9 @@ define(function (require, exports, module) {
             docTextToStore = docToSave._masterEditor._codeMirror.getValue(),
             fileTimestamp  = new Date();
         
-        // MOVE ABOVE VARS INTO PREFERENCE CONTROLLED BLOCK, AND;
-        // MOVE BELOW DB TX INTO PREFERENCE CONTROLLED BLOCK: 
-        // 
-        // if (localHistory) { ... code here ... } 
-        Db.sendDocText(docTextToStore, filePath, fileTimestamp);
+        if (localHistory) {
+            Db.sendDocText(docTextToStore, filePath, fileTimestamp);
+        }
         
         function handleError(error) {
             _showSaveFileError(error, file.fullPath)
