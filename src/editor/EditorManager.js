@@ -811,6 +811,10 @@ define(function (require, exports, module) {
                 } else {
                     var limitedItemList = [];
                     
+                    setTimeout(function() {
+                        $(".modal-footer").find(".btn.primary").attr("disabled", "disabled");
+                    }, 250);
+                               
                     // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
                     Db.database.transaction(function (tx) {
                         tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
