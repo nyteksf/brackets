@@ -856,7 +856,7 @@ define(function (require, exports, module) {
                                         Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE + FileUtils.makeDialogClickableFileList(limitedItemList),
                                         [
                                             {
-                                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                                                className : Dialogs.DIALOG_BTN_CLASS_LEFT,
                                                 id        : Dialogs.DIALOG_BTN_CANCEL,
                                                 text      : Strings.CANCEL
                                             },
