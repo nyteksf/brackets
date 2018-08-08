@@ -35,7 +35,7 @@ define(function (require, exports, module) {
         PopUpManager        = require("widgets/PopUpManager"),
         ViewUtils           = require("utils/ViewUtils"),
         DeprecationWarning  = require("utils/DeprecationWarning");
-
+    
     // make sure the global brackets variable is loaded
     require("utils/Global");
 

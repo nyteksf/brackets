@@ -66,8 +66,23 @@ define(function (require, exports, module) {
         InlineTextEditor    = require("editor/InlineTextEditor").InlineTextEditor,
         Strings             = require("strings"),
         LanguageManager     = require("language/LanguageManager"),
-        DeprecationWarning  = require("utils/DeprecationWarning");
-
+        DeprecationWarning  = require("utils/DeprecationWarning"),
+        CompressionUtils    = require("thirdparty/rawinflate"),
+        CompressionUtils    = require("thirdparty/rawdeflate"),
+        He		            = require("thirdparty/he"),
+        Dialogs             = require("widgets/Dialogs"),
+        DefaultDialogs      = require("widgets/DefaultDialogs"),
+        FileViewController  = require("project/FileViewController"),
+        StringUtils         = require("utils/StringUtils"),
+        FileUtils           = require("file/FileUtils"),
+        Db                  = require("editor/Db");
+    
+        // Load globally for Local History
+        window.Db              = require("editor/Db"),
+        window.He              = require("thirdparty/he"),
+        window.MainViewManager = require("view/MainViewManager"),
+        window.DocumentManager = require("document/DocumentManager");
+        
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -75,7 +90,7 @@ define(function (require, exports, module) {
      * @private
      */
     var _lastFocusedEditor = null;
-
+    
     /**
      * Registered inline-editor widget providers sorted descending by priority.
      * @see {@link #registerInlineEditProvider}.
@@ -100,14 +115,12 @@ define(function (require, exports, module) {
      */
     var _jumpToDefProviders = [];
 
-
     /**
      * DOM element to house any hidden editors created soley for inline widgets
      * @private
      * @type {jQuery}
      */
     var _$hiddenEditorsContainer;
-
 
     /**
      * Retrieves the visible full-size Editor for the currently opened file in the ACTIVE_PANE
@@ -118,8 +131,6 @@ define(function (require, exports, module) {
             doc = currentPath && DocumentManager.getOpenDocumentForPath(currentPath);
         return doc && doc._masterEditor;
     }
-
-
 
     /**
      * Updates _viewStateCache from the given editor's actual current state
@@ -143,7 +154,6 @@ define(function (require, exports, module) {
         }
     }
 
-
 	/**
      * Editor focus handler to change the currently active editor
      * @private
@@ -161,6 +171,9 @@ define(function (require, exports, module) {
         exports.trigger("activeEditorChange", current, previous);
     }
 
+    var LOCAL_HISTORY = "localHistory",
+        localHistory  = PreferencesManager.get(LOCAL_HISTORY);
+    
     /**
      * Current File Changed handler
      * MainViewManager dispatches a "currentFileChange" event whenever the currently viewed
@@ -753,6 +766,189 @@ define(function (require, exports, module) {
         return result.promise();
     }
 
+    /**
+     * Toggles Local History dialog allowing for coarse grained version control
+     */
+	function _toggleLocalHistory() {
+        var savedDocs = [],
+            result = new $.Deferred();
+        
+        var pathToOpenFile  = MainViewManager.getCurrentlyViewedPath('first-pane'),
+            doc             = DocumentManager.getOpenDocumentForPath(pathToOpenFile);
+            
+        // Ensure doc backed with master editor
+        doc._ensureMasterEditor();
+		
+        var filename       = FileUtils.getBaseName(doc.file._path),
+            activePaneId   = 'first-pane';
+        
+        // Prompt user to open Local History for open document
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+            Strings.LOCAL_HISTORY_TITLE,
+                StringUtils.format(
+                    Strings.LOCAL_HISTORY_MESSAGE,
+                    StringUtils.breakableUrl(filename)
+                ),
+            [
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                    id        : Dialogs.DIALOG_BTN_CANCEL,
+                    text      : Strings.CANCEL
+                },
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                    id        : Dialogs.DIALOG_BTN_OK,
+                    text      : Strings.OK
+                }
+            ]
+        )
+            .done(function (id) {
+                if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                    // Do NOOP
+                    result.reject();
+                } else {
+                    var limitedItemList = [];
+                    
+                    setTimeout(function() {
+                        $(".modal-footer").find(".btn.primary").attr("disabled", "disabled");
+                    }, 250);
+                               
+                    // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
+                    Db.database.transaction(function (tx) {
+                        tx.executeSql('SELECT str__DocTxt, str__Timestamp FROM local_history_doctxt WHERE sessionId=?',
+                            [pathToOpenFile],
+                            function (tx, results) {
+                                if (results.rows.length > 0) {
+                                    var fileListForDialog = [];
+                                    for (var row in results.rows) {
+                                        var res = results.rows[row];
+                                        if (typeof res === "object") {
+                                            var docData = [];
+                                            docData.push(res.str__DocTxt);
+                                            docData.push(res.str__Timestamp);
+                                            docData.push(pathToOpenFile);
+                                            
+                                            fileListForDialog.push(docData);
+                                        }
+                                    }
+                                    
+                                    // Accept only the latest 10 records displayed to DOM
+                                    if (fileListForDialog.length > 10) {
+                                        for (var i=0, len=10; i<len; i++) {
+                                            limitedItemList.push(fileListForDialog[fileListForDialog.length - 1]);
+                                            fileListForDialog.pop();
+                                        }
+                                        
+                                        for (var i=0, len=fileListForDialog.length; i<len; i=i+1) {
+                                            var table     = "local_history_doctxt",
+                                                filePath  = fileListForDialog[i][2],
+                                                timestamp = fileListForDialog[i][1];
+                                            
+                                            Db.delTableRowDb(table, filePath, timestamp);
+                                        }
+                                    } else { limitedItemList = fileListForDialog; }
+                                    
+                                    // Load second dialog listing Local History files for user selection
+                                    Dialogs.showModalDialog(
+                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                        Strings.LOCAL_HISTORY_TITLE,
+                                        Strings.LOCAL_HISTORY_OPEN_FILE_MESSAGE + FileUtils.makeDialogClickableFileList(limitedItemList),
+                                        [
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+                                                id        : Dialogs.DIALOG_BTN_CANCEL,
+                                                text      : Strings.CANCEL
+                                            },
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                                                id        : Dialogs.DIALOG_BTN_DELETEALL,
+                                                text      : Strings.DELETE_ALL
+                                            },
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                                id        : Dialogs.DIALOG_BTN_OK,
+                                                text      : Strings.OPEN_FILE
+                                            }
+                                        ]
+                                    )
+                                        .done(function (id) {
+                                            if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                                                // Do NOOP
+                                                result.reject();
+                                            } 
+                                            else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
+                                                setTimeout(function() {
+                                                    $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                                }, 250);
+                                                Db.delRows(pathToOpenFile, null, true)
+                                                    .done(function () {
+                                                        Db.printSavedContents(pathToOpenFile, true);
+                                                        
+                                                        Dialogs.showModalDialog(
+                                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                                        Strings.LOCAL_HISTORY_TITLE,
+                                                            StringUtils.format(
+                                                            Strings.LOCAL_HISTORY_DELALL_MESSAGE,
+                                                            StringUtils.breakableUrl(filename)
+                                                        ),
+                                                        [
+                                                            {
+                                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                                                id        : Dialogs.DIALOG_BTN_OK,
+                                                                text      : Strings.OK
+                                                            }
+                                                        ]
+                                                    )
+                                                        .done(function (id) {
+                                                            if (id === Dialogs.DIALOG_BTN_OK) {
+                                                                // Do NOOP
+                                                                result.reject();
+                                                            } 
+                                                        });
+                                                    });
+                                            } else {
+                                                // "File Open" case
+                                                result.resolve();
+                                            }
+                                        });
+                                } else {  // No backups for current file in Local History
+                                    setTimeout(function() {
+                                        $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                    }, 250);
+                                    Dialogs.showModalDialog(
+                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                        Strings.LOCAL_HISTORY_TITLE,
+                                            StringUtils.format(
+                                                Strings.LOCAL_HISTORY_EMPTY_MESSAGE,
+                                                StringUtils.breakableUrl(filename)
+                                            ),
+                                        [
+                                            {
+                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                                id        : Dialogs.DIALOG_BTN_OK,
+                                                text      : Strings.OK
+                                            }
+                                        ]
+                                    )
+                                        .done(function (id) {
+                                            if (id === Dialogs.DIALOG_BTN_OK) {
+                                                // Do NOOP
+                                                result.reject();
+                                            } 
+                                        });
+                                }
+                            },
+                            function (tx, error) {
+                                console.log(error);
+                            }
+                        );
+                    });
+                }
+            });
+        
+            return result.promise();
+    }
 
     /**
      * file removed from pane handler.
@@ -779,7 +975,6 @@ define(function (require, exports, module) {
         }
     }
 
-
     // Set up event dispatching
     EventDispatcher.makeEventDispatcher(exports);
 
@@ -798,7 +993,11 @@ define(function (require, exports, module) {
         return _toggleInlineWidget(_inlineDocsProviders, Strings.ERROR_QUICK_DOCS_PROVIDER_NOT_FOUND);
     });
     CommandManager.register(Strings.CMD_JUMPTO_DEFINITION, Commands.NAVIGATE_JUMPTO_DEFINITION, _doJumpToDef);
-
+    
+    if (localHistory) {
+        CommandManager.register(Strings.CMD_TOGGLE_LOCAL_HISTORY, Commands.TOGGLE_LOCAL_HISTORY, _toggleLocalHistory);
+    }
+	
     // Create PerfUtils measurement
     PerfUtils.createPerfMeasurement("JUMP_TO_DEFINITION", "Jump-To-Definiiton");
 

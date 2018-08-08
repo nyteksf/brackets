@@ -57,7 +57,10 @@ define(function (require, exports, module) {
         StatusBar           = require("widgets/StatusBar"),
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
-        _                   = require("thirdparty/lodash");
+        _                   = require("thirdparty/lodash"),
+        He                  = require("thirdparty/he"),
+        CompressionUtils    = require("thirdparty/rawdeflate"),
+        Db                  = require("editor/Db");
 
     /**
      * Handlers for commands related to document handling (opening, saving, etc.)
@@ -136,6 +139,10 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference("defaultExtension", "string", "", {
         excludeFromHints: true
     });
+    
+    var LOCAL_HISTORY = "localHistory",
+        localHistory  = PreferencesManager.get(LOCAL_HISTORY);
+    
     EventDispatcher.makeEventDispatcher(exports);
 
     /**
@@ -734,8 +741,11 @@ define(function (require, exports, module) {
      */
     function doSave(docToSave, force) {
         var result = new $.Deferred(),
-            file = docToSave.file;
-
+            file = docToSave.file,
+            filePath = file._path,
+            docTextToStore = docToSave._masterEditor._codeMirror.getValue(),
+            fileTimestamp  = new Date();
+        
         function handleError(error) {
             _showSaveFileError(error, file.fullPath)
                 .done(function () {
@@ -799,6 +809,31 @@ define(function (require, exports, module) {
         }
 
         if (docToSave.isDirty) {
+            if (localHistory) {
+                Db.database.transaction(function (tx) {
+                    tx.executeSql('SELECT * FROM local_history_doctxt WHERE sessionId=?', 
+                        [filePath], 
+                        function (tx, results) {
+                            if (results.rows.length > 0) {
+                                var lastKey = Object.keys(results.rows).pop();
+
+                                var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
+
+                                // Diff latest to prevent accumulation of identical doc copies
+                                if (docTextToStore !== decodedSavedDocTxt) {
+                                    Db.sendDocText(docTextToStore, filePath, fileTimestamp);
+                                }
+                            } else {
+                                Db.sendDocText(docTextToStore, filePath, fileTimestamp);
+                            }
+                        }, 
+                        function (tx, error) {
+                            console.log(error);
+                        }
+                    );
+                });
+            }
+            
             if (docToSave.keepChangesTime) {
                 // The user has decided to keep conflicting changes in the editor. Check to make sure
                 // the file hasn't changed since they last decided to do that.

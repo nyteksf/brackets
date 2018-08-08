@@ -21,8 +21,8 @@
  *
  */
 
-/*jslint regexp: true */
-/*global unescape */
+/* jslint regexp: true */
+/* global unescape */
 
 /**
  * Set of utilities for working with files and text content.
@@ -212,6 +212,41 @@ define(function (require, exports, module) {
         DeprecationWarning.deprecationWarning("FileUtils.showFileOpenError() has been deprecated. " +
                                               "Please use DocumentCommandHandlers.showFileOpenError() instead.");
         return DocumentCommandHandlers.showFileOpenError(name, path);
+    }
+    
+    /*
+    Modal (div.modal-wrapper)
+    window.context.all[2206].children["0"].childNodes["0"].childNodes[5]
+    window.context.all.HTMLAllCollection[2206].children["0"].childNodes["0"].childNodes[5]
+    window.context.body.children[9]
+    BUTTON: (button.dialog-button.btn.primary)
+    window.context.body.children[9].children["0"].children["0"].children[2].children[2]
+    */
+    
+    /**
+     * Creates an HTML string from a list of files to be used in the selection of a Local 
+     * History file; allowing for version control.
+     * @param {Array.<string>} Array of filenames with paths to display.
+     */
+    function makeDialogClickableFileList(fileList) {
+        // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
+        var result = "<div id='localHistoryContainer'>";
+	    result += "<ul class='clickable-dialog-list'>";
+        fileList.forEach(function (file) {
+            // onclick steps:
+            //   0) Remove any prior click evt listeners on OPEN FILE button
+            //   1) Add new click evt listener to btn
+            //   2) Remove any active item CSS from modal <li>s
+            //   3) Add active item CSS to currently clicked <li> only
+            result += "<li class='LHListItem' onclick='$(document).find(&quot;.dialog-button.btn.primary&quot).removeAttr(&quot;disabled&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).off(&quot;click&quot;); $(document).find(&quot;.dialog-button.btn.primary&quot).on(&quot;click&quot;, function(){ var activeLi = $(&quot;&num;localHistoryContainer&quot;).find(&quot;.activeLHModalLi&quot;); var timestamp = activeLi[0].attributes[2].value; var pathToOpenFile = MainViewManager.getCurrentlyViewedPath(&quot;first-pane&quot;), doc = DocumentManager.getOpenDocumentForPath(pathToOpenFile); Db.database.transaction(function(tx){ tx.executeSql(&quot;SELECT str__DocTxt FROM local_history_doctxt WHERE str__Timestamp=? AND sessionId=?&quot;, [timestamp, pathToOpenFile], function(tx,results) { var docText = He.decode(RawDeflate.inflate(results.rows[0].str__DocTxt)); doc._masterEditor._codeMirror.setValue(docText); doc._masterEditor._codeMirror.refresh(); doc._masterEditor._codeMirror.clearHistory(); }, function(tx,error){ console.log(error); }); });  }); $(&quot;&num;localHistoryContainer li&quot;).removeClass(&quot;activeLHModalLi&quot;); $(this).addClass(&quot;activeLHModalLi&quot;);' timestamp='" + file[1] + "'>";
+            result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
+            result += "<a href='#' onclick='event.stopPropagation(); event.preventDefault(); var thisLi = $(this).parent(), pathToCurFile = MainViewManager.getCurrentlyViewedPath(&quot;first-pane&quot;); Db.delTableRowDb(&quot;local_history_doctxt&quot;, pathToCurFile, thisLi[0].attributes[2].value); $(document).find(&quot;.dialog-button.btn.primary&quot).prop(&quot;disabled&quot;,&quot;disabled&quot;); $(this).parent().hide();' class='LHListItemXClose' title='Delete'>&times;</a>";
+            result += "</li>";
+        });
+        result += "</ul>";
+        result += "</div>";
+
+        return result;
     }
 
     /**
@@ -551,6 +586,7 @@ define(function (require, exports, module) {
     exports.makeDialogFileList             = makeDialogFileList;
     exports.readAsText                     = readAsText;
     exports.writeText                      = writeText;
+    exports.makeDialogClickableFileList    = makeDialogClickableFileList;
     exports.convertToNativePath            = convertToNativePath;
     exports.convertWindowsPathToUnixPath   = convertWindowsPathToUnixPath;
     exports.getNativeBracketsDirectoryPath = getNativeBracketsDirectoryPath;

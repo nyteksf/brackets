@@ -309,6 +309,11 @@
     "navigate.toggleQuickDocs":  [
         "Ctrl-K"
     ],
+	"navigate.toggleLocalHistory": [
+		{
+            "key": "Alt-L"
+        }
+	],
     "navigate.previousMatch":  [
         {
             "key": "Alt-Up",
