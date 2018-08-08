@@ -81,6 +81,7 @@ define(function (require, exports, module) {
         window.Db              = require("editor/Db"),
         window.He              = require("thirdparty/he"),
         window.MainViewManager = require("view/MainViewManager"),
+        //window.DocumentCommandHandlers = require("document/DocumentCommandHandlers"),
         window.DocumentManager = require("document/DocumentManager");
         
 
@@ -95,7 +96,7 @@ define(function (require, exports, module) {
      * Registered inline-editor widget providers sorted descending by priority.
      * @see {@link #registerInlineEditProvider}.
      * @type {Array.<{priority:number, provider:function(...)}>}
-     * @private
+     * @private 
      */
     var _inlineEditProviders = [];
 

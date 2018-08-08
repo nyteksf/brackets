@@ -811,29 +811,31 @@ define(function (require, exports, module) {
         if (docToSave.isDirty) {
             if (localHistory) {
                 Db.database.transaction(function (tx) {
-                    tx.executeSql('SELECT * FROM local_history_doctxt WHERE sessionId=?', 
-                        [filePath], 
+                    tx.executeSql('SELECT * FROM local_history_doctxt WHERE sessionId=?',
+                        [filePath],
                         function (tx, results) {
                             if (results.rows.length > 0) {
+                                console.log("ROWS FOUND")
+                                // Diff latest save to prevent accumulation of identical copies
                                 var lastKey = Object.keys(results.rows).pop();
 
                                 var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
 
-                                // Diff latest to prevent accumulation of identical doc copies
                                 if (docTextToStore !== decodedSavedDocTxt) {
                                     Db.sendDocText(docTextToStore, filePath, fileTimestamp);
                                 }
                             } else {
+                                console.log("NO ROWS FOUND")
                                 Db.sendDocText(docTextToStore, filePath, fileTimestamp);
                             }
-                        }, 
+                        },
                         function (tx, error) {
                             console.log(error);
                         }
                     );
                 });
             }
-            
+
             if (docToSave.keepChangesTime) {
                 // The user has decided to keep conflicting changes in the editor. Check to make sure
                 // the file hasn't changed since they last decided to do that.
