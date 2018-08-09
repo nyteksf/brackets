@@ -83,7 +83,6 @@ define(function (require, exports, module) {
         window.MainViewManager = require("view/MainViewManager"),
         window.FileUtils       = require("file/FileUtils"),
         window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),
-        window.ProjectManager  = require("project/ProjectManager"),
         window.DocumentManager = require("document/DocumentManager");
         
 
@@ -768,6 +767,53 @@ define(function (require, exports, module) {
 
         return result.promise();
     }
+    
+    function delallConfirmDialog(pathToOpenFile) {
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+            Strings.LOCAL_HISTORY_TITLE,
+            Strings.LOCAL_HISTORY_DELALL_MESSAGE,
+            [
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                    id        : Dialogs.DIALOG_BTN_CANCEL,
+                    text      : Strings.CANCEL
+                },
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                    id        : Dialogs.DIALOG_BTN_OK,
+                    text      : Strings.DELETE_ALL
+                }
+            ]
+        )
+            .done(function(id) {
+                if (id === Dialogs.DIALOG_BTN_OK) {
+                    console.log("deleting all")
+                    Db.delRows(pathToOpenFile, null, true)
+                        .done(function () {
+                            console.log("done deleting... opening second dialog")
+                            
+                            Dialogs.showModalDialog(
+                                DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+                                Strings.LOCAL_HISTORY_TITLE,
+                                Strings.LOCAL_HISTORY_DELALL_CONFIRM_MESSAGE,
+                                [
+                                    {
+                                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                                        id        : Dialogs.DIALOG_BTN_OK,
+                                        text      : Strings.OK
+                                    }
+                                ]
+                            )
+                                .done(function (id) {
+                                    if (id === Dialogs.DIALOG_BTN_OK) {
+                                        // Do NOOP
+                                    }
+                                });
+                            });
+                        }     
+            });
+    }
 
     /**
      * Toggles Local History dialog allowing for coarse grained version control
@@ -876,42 +922,19 @@ define(function (require, exports, module) {
                                         ]
                                     )
                                         .done(function (id) {
+                                            setTimeout(function() {
+                                                // Clear attr for other modals
+                                                $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                            }, 250);
+                                        
                                             if (id === Dialogs.DIALOG_BTN_CANCEL) {
-                                                // Do NOOP
                                                 result.reject();
                                             } 
                                             else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
-                                                setTimeout(function() {
-                                                    $(".modal-footer").find(".btn.primary").removeAttr("disabled");
-                                                }, 250);
-                                                Db.delRows(pathToOpenFile, null, true)
-                                                    .done(function () {
-                                                        Db.printSavedContents(pathToOpenFile, true);
-                                                        
-                                                        Dialogs.showModalDialog(
-                                                        DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
-                                                        Strings.LOCAL_HISTORY_TITLE,
-                                                            StringUtils.format(
-                                                            Strings.LOCAL_HISTORY_DELALL_MESSAGE,
-                                                            StringUtils.breakableUrl(filename)
-                                                        ),
-                                                        [
-                                                            {
-                                                                className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                                                                id        : Dialogs.DIALOG_BTN_OK,
-                                                                text      : Strings.OK
-                                                            }
-                                                        ]
-                                                    )
-                                                        .done(function (id) {
-                                                            if (id === Dialogs.DIALOG_BTN_OK) {
-                                                                // Do NOOP
-                                                                result.reject();
-                                                            } 
-                                                        });
-                                                    });
+                                                delallConfirmDialog(pathToOpenFile);
+                                                
                                             } else {
-                                                // "File Open" case
+                                                // "File Open" case:
                                                 result.resolve();
                                             }
                                         });

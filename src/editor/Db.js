@@ -86,7 +86,18 @@ define(function (require, exports, module) {
         DocumentManager = require("document/DocumentManager"),
     	CompressionUtils = require("thirdparty/rawdeflate"),
         CompressionUtils = require("thirdparty/rawinflate"),
+        Dialogs = require("widgets/Dialogs"),
+        DefaultDialogs = require("widgets/DefaultDialogs"),
+        Strings = require("strings"),
         He = require("thirdparty/he");
+    
+    // Load globally for Local History on client side
+        window.Db              = require("editor/Db"),
+        window.He              = require("thirdparty/he"),
+        window.MainViewManager = require("view/MainViewManager"),
+        window.FileUtils       = require("file/FileUtils"),
+        window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),
+        window.DocumentManager = require("document/DocumentManager");
 
     // Config settings
     var DB_NAME    = 'change_history_db',
@@ -490,7 +501,79 @@ define(function (require, exports, module) {
 
         return result.promise();
     }
+    
+    /*
+     * Confirm deletion of individual Local History table row item
+     */
+    function confirmDeleteDocDialog() {
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+            Strings.LOCAL_HISTORY_TITLE,
+            Strings.LOCAL_HISTORY_DEL_CONFIRM_MESSAGE,
+            [
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                    id        : Dialogs.DIALOG_BTN_OK,
+                    text      : Strings.OK
+                }
+            ]
+        )
+            .done(function(id) {
+                if (id === Dialogs.DIALOG_BTN_OK) {
+                    setTimeout(function() {
+                        $(".modal-footer").find(".btn.primary").attr("disabled", "disabled");
+                    }, 250);   
+                }
+            });
+    }
+    
+    /*
+     * Prompt for deletion of individual documents from Local History DB table
+     */
+    function deleteDocPromptDialog(pathToCurFile, value) {
+        setTimeout(function(){
+            $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+        }, 250);
 
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
+            Strings.LOCAL_HISTORY_TITLE,
+            Strings.LOCAL_HISTORY_DEL_PROMPT_MESSAGE,
+            [
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                    id        : Dialogs.DIALOG_BTN_CANCEL,
+                    text      : Strings.CANCEL
+                },
+                {
+                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                    id        : Dialogs.DIALOG_BTN_OK,
+                    text      : Strings.OK
+                }
+            ]
+        )
+            .done(function(id) {
+                if (id === Dialogs.DIALOG_BTN_OK) {
+                    console.log("PROCEEDING WITH DELETION")
+                    setTimeout(function(){
+                        $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                    }, 250);
+                    
+                    Db.delTableRowDb("local_history_doctxt", pathToCurFile, value);
+                    
+                    confirmDeleteDocDialog();
+                } else { 
+                    console.log("CANCEL")  
+                    var $activeLi = $(document).find(".activeLHModalLi");
+                    $activeLi.removeClass(".activeLHModalLi");
+                    $activeLi.show();
+                }
+            });   
+    }
+    
+    // For use with Local History dialog file list
+    window.deleteDocPromptDialog  = deleteDocPromptDialog;
+    
     exports.database = database;
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
     exports.sendChangeHistory = sendChangeHistory;

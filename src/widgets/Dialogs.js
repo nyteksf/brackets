@@ -43,6 +43,7 @@ define(function (require, exports, module) {
         DIALOG_BTN_OK               = "ok",
         DIALOG_BTN_DONTSAVE         = "dontsave",
         DIALOG_BTN_DELETEALL        = "deleteall",
+        DIALOG_BTN_DELETE           = "delete",
         DIALOG_BTN_SAVEANDOVERWRITE = "saveandoverwrite",
         DIALOG_BTN_SAVE_AS          = "save_as",
         DIALOG_CANCELED             = "_canceled",
