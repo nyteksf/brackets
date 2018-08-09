@@ -558,21 +558,26 @@ define(function (require, exports, module) {
                     setTimeout(function(){
                         $(".modal-footer").find(".btn.primary").removeAttr("disabled");
                     }, 250);
+                    $(".modal-footer").find(".btn.primary")
+                        .on("click", function(evt) {
+                            evt.stopPropagation();
+                            evt.preventDefault();
+                            evt.stopImmediatePropagation();
+                        });
                     
                     Db.delTableRowDb("local_history_doctxt", pathToCurFile, value);
-                    
                     confirmDeleteDocDialog();
                 } else { 
                     console.log("CANCEL")  
                     var $activeLi = $(document).find(".activeLHModalLi");
-                    $activeLi.removeClass(".activeLHModalLi");
+                    $activeLi.removeClass("activeLHModalLi");
                     $activeLi.show();
                 }
             });   
     }
     
     // For use with Local History dialog file list
-    window.deleteDocPromptDialog  = deleteDocPromptDialog;
+    window.deleteDocPromptDialog = deleteDocPromptDialog;
     
     exports.database = database;
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
