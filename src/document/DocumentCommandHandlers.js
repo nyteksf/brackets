@@ -1857,7 +1857,6 @@ define(function (require, exports, module) {
     // Define public API
     exports.showFileOpenError = showFileOpenError;
     exports.APP_QUIT_CANCELLED = APP_QUIT_CANCELLED;
-    
 
     // Deprecated commands
     CommandManager.register(Strings.CMD_ADD_TO_WORKING_SET,          Commands.FILE_ADD_TO_WORKING_SET,        handleFileAddToWorkingSet);
@@ -1905,7 +1904,7 @@ define(function (require, exports, module) {
             CommandManager.registerInternal(Commands.APP_RELOAD,                handleReload); CommandManager.registerInternal(Commands.APP_RELOAD_WITHOUT_EXTS,   handleReloadWithoutExts);
        }, 4000);
     });
-
+    
     // Listen for changes that require updating the editor titlebar
     ProjectManager.on("projectOpen", _updateTitle);
     DocumentManager.on("dirtyFlagChange", handleDirtyChange);

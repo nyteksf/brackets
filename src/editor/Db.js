@@ -397,7 +397,7 @@ define(function (require, exports, module) {
 	}
     
 	// Send/update changes to document text in db
-    function sendDocText (docTextToSync, filePath, fileTimestamp) {
+    function sendDocText(docTextToSync, filePath, fileTimestamp) {
         var compressedDocText = window.RawDeflate.deflate(He.encode(docTextToSync.toString())),
 			result = new $.Deferred();
 		

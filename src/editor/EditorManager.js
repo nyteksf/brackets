@@ -81,7 +81,9 @@ define(function (require, exports, module) {
         window.Db              = require("editor/Db"),
         window.He              = require("thirdparty/he"),
         window.MainViewManager = require("view/MainViewManager"),
-        //window.DocumentCommandHandlers = require("document/DocumentCommandHandlers"),
+        window.FileUtils       = require("file/FileUtils"),
+        window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),
+        window.ProjectManager  = require("project/ProjectManager"),
         window.DocumentManager = require("document/DocumentManager");
         
 
