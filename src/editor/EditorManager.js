@@ -788,11 +788,8 @@ define(function (require, exports, module) {
         )
             .done(function(id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
-                    console.log("deleting all")
                     Db.delRows(pathToOpenFile, null, true)
                         .done(function () {
-                            console.log("done deleting... opening second dialog")
-                            
                             Dialogs.showModalDialog(
                                 DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
                                 Strings.LOCAL_HISTORY_TITLE,

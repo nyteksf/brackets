@@ -815,7 +815,6 @@ define(function (require, exports, module) {
                         [filePath],
                         function (tx, results) {
                             if (results.rows.length > 0) {
-                                console.log("ROWS FOUND")
                                 // Diff latest save to prevent accumulation of identical copies
                                 var lastKey = Object.keys(results.rows).pop();
 
@@ -825,7 +824,6 @@ define(function (require, exports, module) {
                                     Db.sendDocText(docTextToStore, filePath, fileTimestamp);
                                 }
                             } else {
-                                console.log("NO ROWS FOUND")
                                 Db.sendDocText(docTextToStore, filePath, fileTimestamp);
                             }
                         },
@@ -992,7 +990,6 @@ define(function (require, exports, module) {
             // the editor.
             FileUtils.writeText(newFile, doc.getText(true), true)
                 .done(function () {
-                    console.log("newFile ", newFile)
                     if (localHistory) {
                         Db.database.transaction(function (tx) {
                             tx.executeSql('SELECT * FROM local_history_doctxt WHERE sessionId=?',
@@ -1001,7 +998,6 @@ define(function (require, exports, module) {
                                     var fileTimestamp = new Date(),
                                         docTextToStore = window.RawDeflate.deflate(He.encode(doc.getText(true)));
                                     if (results.rows.length > 0) {
-                                        console.log("ROWS FOUND")
                                         // Diff latest save to prevent accumulation of identical copies
                                         var lastKey = Object.keys(results.rows).pop();
 
@@ -1012,7 +1008,6 @@ define(function (require, exports, module) {
                                             Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
                                         }
                                     } else {
-                                        console.log("NO ROWS FOUND")
                                         Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
                                     }
                                 },

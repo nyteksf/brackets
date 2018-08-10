@@ -178,7 +178,7 @@ define(function (require, exports, module) {
                 null,
                 function (tx, error) {
                     console.log("Error: ", error);
-                    console.log("Could not create table ", table);
+                    console.log("Could not create table '" + table + "'");
                 }
             );
         });
@@ -501,80 +501,6 @@ define(function (require, exports, module) {
 
         return result.promise();
     }
-    
-    /*
-     * Confirm deletion of individual Local History table row item
-     */
-    function confirmDeleteDocDialog() {
-        Dialogs.showModalDialog(
-            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
-            Strings.LOCAL_HISTORY_TITLE,
-            Strings.LOCAL_HISTORY_DEL_CONFIRM_MESSAGE,
-            [
-                {
-                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                    id        : Dialogs.DIALOG_BTN_OK,
-                    text      : Strings.OK
-                }
-            ]
-        )
-            .done(function(id) {
-                if (id === Dialogs.DIALOG_BTN_OK) {
-                    setTimeout(function() {
-                        $(".modal-footer").find(".btn.primary").attr("disabled", "disabled");
-                    }, 250);   
-                }
-            });
-    }
-    
-    /*
-     * Prompt for deletion of individual documents from Local History DB table
-     */
-    function deleteDocPromptDialog(pathToCurFile, timestamp) {
-        setTimeout(function(){
-            $(".modal-footer").find(".btn.primary").removeAttr("disabled");
-        }, 250);
-
-        Dialogs.showModalDialog(
-            DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
-            Strings.LOCAL_HISTORY_TITLE,
-            Strings.LOCAL_HISTORY_DEL_PROMPT_MESSAGE,
-            [
-                {
-                    className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                    id        : Dialogs.DIALOG_BTN_CANCEL,
-                    text      : Strings.CANCEL
-                },
-                {
-                    className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                    id        : Dialogs.DIALOG_BTN_DELETE,
-                    text      : Strings.DELETE
-                }
-            ]
-        )
-            .done(function(id2) {
-                // Remove darker blue active class from currently active <li>
-                var $eachLi = $(window.document).find(".LHListItem");
-                $eachLi.removeClass("activeLHModalLi");
-                
-                if (id2 === Dialogs.DIALOG_BTN_DELETE) {
-                    console.log("PROCEEDING WITH DELETION")
-                    setTimeout(function() {
-                        $(".modal-footer").find(".btn.primary").removeAttr("disabled");
-                    }, 250);
-                    
-                    delTableRowDb("local_history_doctxt", pathToCurFile, timestamp);
-                    confirmDeleteDocDialog();
-                } else { 
-                    console.log("CANCEL")  
-                    $(".lastClickedXClose").parent().show();
-                            
-                }
-            });   
-    }
-    
-    // For use with Local History dialog file list
-    //window.deleteDocPromptDialog = deleteDocPromptDialog;
     
     exports.database = database;
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
