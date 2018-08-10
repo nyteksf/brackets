@@ -229,10 +229,16 @@ define(function (require, exports, module) {
      * @param {Array.<string>} Array of filenames with paths to display.
      */
     function makeDialogClickableFileList(fileList) {
-        // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList
+        // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList    
+        var firstFile  = fileList[0][1],
+            secondFile = fileList[1][1],
+            listIsInverted = (firstFile < secondFile) ? true : false;
         
-        // Sort by descending chronological order
-        fileList = fileList.reverse();
+        // Ensure proper descending order in dialog display because
+        // SQL query 'ORDER BY str__Timestamp DESC' doesn't work
+        if (listIsInverted) {
+            fileList = fileList.reverse();
+        }
         
         var result = "<div id='localHistoryContainer'>";
 	    result += "<ul class='clickable-dialog-list'>";
