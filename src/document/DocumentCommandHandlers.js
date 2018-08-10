@@ -993,6 +993,36 @@ define(function (require, exports, module) {
             // the editor.
             FileUtils.writeText(newFile, doc.getText(true), true)
                 .done(function () {
+                    console.log("newFile ", newFile)
+                    if (localHistory) {
+                        Db.database.transaction(function (tx) {
+                            tx.executeSql('SELECT * FROM local_history_doctxt WHERE sessionId=?',
+                                [newFile._path],
+                                function (tx, results) {
+                                    var fileTimestamp = new Date(),
+                                        docTextToStore = window.RawDeflate.deflate(He.encode(doc.getText(true)));
+                                    if (results.rows.length > 0) {
+                                        console.log("ROWS FOUND")
+                                        // Diff latest save to prevent accumulation of identical copies
+                                        var lastKey = Object.keys(results.rows).pop();
+
+                                        var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
+
+                                        // Verify that doc to save is unique
+                                        if (docTextToStore !== decodedSavedDocTxt) {
+                                            Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
+                                        }
+                                    } else {
+                                        console.log("NO ROWS FOUND")
+                                        Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
+                                    }
+                                },
+                                function (tx, error) {
+                                    console.log(error);
+                                }
+                            );
+                        });
+                    }
                     // If there were unsaved changes before Save As, they don't stay with the old
                     // file anymore - so must revert the old doc to match disk content.
                     // Only do this if the doc was dirty: _doRevert on a file that is not dirty and
@@ -1053,7 +1083,6 @@ define(function (require, exports, module) {
                 function (err, selectedPath) {
                 if (!err) {
                     if (selectedPath) {
-                        console.log("LOADING _doSaveAfterSaveDialog")
                         _doSaveAfterSaveDialog(selectedPath);
                     } else {
                         dispatchAppQuitCancelledEvent();

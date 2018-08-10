@@ -230,9 +230,12 @@ define(function (require, exports, module) {
      */
     function makeDialogClickableFileList(fileList) {
         // [[FileName, FilePath], [FileName, FilePath], ...] <- fileList    
-        var firstFile  = fileList[0][1],
-            secondFile = fileList[1][1],
-            listIsInverted = (firstFile < secondFile) ? true : false;
+        
+        if (fileList.length > 1) {
+            var firstFile  = fileList[0][1],
+                secondFile = fileList[1][1],
+                listIsInverted = (firstFile < secondFile) ? true : false;
+        }
         
         // Ensure proper descending order in dialog display because
         // SQL query 'ORDER BY str__Timestamp DESC' doesn't work
