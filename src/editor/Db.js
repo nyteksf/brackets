@@ -132,10 +132,9 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference(HOT_CLOSE, "boolean", false, {
         description: Strings.DESCRIPTION_HOT_CLOSE
     });
-    PreferencesManager.definePreference(LOCAL_HISTORY, "boolean", true, {
-        description: Strings.DESCRIPTION_LOCAL_HISTORY
-    });
-
+    //PreferencesManager.definePreference(LOCAL_HISTORY, "boolean", true, {
+    //    description: Strings.DESCRIPTION_LOCAL_HISTORY
+    //});
     var hotClose     = PreferencesManager.get(HOT_CLOSE),
 	localHistory = PreferencesManager.get(LOCAL_HISTORY);
 

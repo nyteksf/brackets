@@ -1046,9 +1046,14 @@ define(function (require, exports, module) {
                     }
                 }
             }
-            FileSystem.showSaveDialog(Strings.SAVE_FILE_AS, saveAsDefaultPath, defaultName, function (err, selectedPath) {
+            FileSystem.showSaveDialog(
+                Strings.SAVE_FILE_AS,
+                saveAsDefaultPath, 
+                defaultName, 
+                function (err, selectedPath) {
                 if (!err) {
                     if (selectedPath) {
+                        console.log("LOADING _doSaveAfterSaveDialog")
                         _doSaveAfterSaveDialog(selectedPath);
                     } else {
                         dispatchAppQuitCancelledEvent();

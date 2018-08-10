@@ -148,7 +148,12 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference(CLOSE_BRACKETS,     "boolean", true, {
         description: Strings.DESCRIPTION_CLOSE_BRACKETS
     });
-
+    
+    var LOCAL_HISTORY = "localHistory";
+    PreferencesManager.definePreference(LOCAL_HISTORY, "boolean", true, {
+        description: Strings.DESCRIPTION_LOCAL_HISTORY
+    });
+    
     // CodeMirror, html mode, set some tags do not close automatically.
     // We do not initialize "dontCloseTags" because otherwise we would overwrite the default behavior of CodeMirror.
     PreferencesManager.definePreference(CLOSE_TAGS,         "object", { whenOpening: true, whenClosing: true, indentTags: [] }, {
