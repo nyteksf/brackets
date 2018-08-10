@@ -530,7 +530,7 @@ define(function (require, exports, module) {
     /*
      * Prompt for deletion of individual documents from Local History DB table
      */
-    function deleteDocPromptDialog(pathToCurFile, value) {
+    function deleteDocPromptDialog(pathToCurFile, timestamp) {
         setTimeout(function(){
             $(".modal-footer").find(".btn.primary").removeAttr("disabled");
         }, 250);
@@ -547,31 +547,27 @@ define(function (require, exports, module) {
                 },
                 {
                     className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                    id        : Dialogs.DIALOG_BTN_OK,
-                    text      : Strings.OK
+                    id        : Dialogs.DIALOG_BTN_DELETE,
+                    text      : Strings.DELETE
                 }
             ]
         )
-            .done(function(id) {
-                if (id === Dialogs.DIALOG_BTN_OK) {
+            .done(function(id2) {
+                var $eachLi = $(document).find(".LHListItem");
+                $eachLi.removeClass("activeLHModalLi");
+                
+                if (id2 === Dialogs.DIALOG_BTN_DELETE) {
                     console.log("PROCEEDING WITH DELETION")
-                    setTimeout(function(){
+                    setTimeout(function() {
                         $(".modal-footer").find(".btn.primary").removeAttr("disabled");
                     }, 250);
-                    $(".modal-footer").find(".btn.primary")
-                        .on("click", function(evt) {
-                            evt.stopPropagation();
-                            evt.preventDefault();
-                            evt.stopImmediatePropagation();
-                        });
                     
-                    Db.delTableRowDb("local_history_doctxt", pathToCurFile, value);
+                    delTableRowDb("local_history_doctxt", pathToCurFile, timestamp);
                     confirmDeleteDocDialog();
                 } else { 
                     console.log("CANCEL")  
-                    var $activeLi = $(document).find(".activeLHModalLi");
-                    $activeLi.removeClass("activeLHModalLi");
-                    $activeLi.show();
+                    $eachLi.show();
+                            
                 }
             });   
     }

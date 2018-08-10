@@ -916,7 +916,7 @@ define(function (require, exports, module) {
                                             },
                                             {
                                                 className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                                                id        : Dialogs.DIALOG_BTN_OPEN_FILE,
+                                                id        : Dialogs.DIALOG_BTN_OK,
                                                 text      : Strings.OPEN_FILE
                                             }
                                         ]
