@@ -552,6 +552,7 @@ define(function (require, exports, module) {
             ]
         )
             .done(function(id2) {
+                // Remove darker blue active class from currently active <li>
                 var $eachLi = $(document).find(".LHListItem");
                 $eachLi.removeClass("activeLHModalLi");
                 
@@ -565,7 +566,7 @@ define(function (require, exports, module) {
                     confirmDeleteDocDialog();
                 } else { 
                     console.log("CANCEL")  
-                    $eachLi.show();
+                    $(".lastClickedXClose").parent().show();
                             
                 }
             });   
