@@ -82,7 +82,6 @@ define(function (require, exports, module) {
 
     var Editor = require("editor/Editor"),
         PreferencesManager = require("preferences/PreferencesManager"),
-    	Strings = require("strings"),
         DocumentManager = require("document/DocumentManager"),
     	CompressionUtils = require("thirdparty/rawdeflate"),
         CompressionUtils = require("thirdparty/rawinflate"),
@@ -90,15 +89,17 @@ define(function (require, exports, module) {
         DefaultDialogs = require("widgets/DefaultDialogs"),
         Strings = require("strings"),
         He = require("thirdparty/he");
-    
-    // Load globally for Local History on client side
-        window.Db              = require("editor/Db"),
-        window.He              = require("thirdparty/he"),
-        window.MainViewManager = require("view/MainViewManager"),
-        window.FileUtils       = require("file/FileUtils"),
-        window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),
-        window.DocumentManager = require("document/DocumentManager");
 
+    // Load globally for Local History
+    // Used on client side via calls from FileUtils
+        window.LocalHistory    = require("./LocalHistory");
+        //window.Db              = require("editor/Db"),            // CUT
+        //window.He              = require("thirdparty/he"),        // CUT
+        //window.MainViewManager = require("view/MainViewManager"), // CUT
+        //window.FileUtils       = require("file/FileUtils"),       // CUT
+        //window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),  // CUT
+        //window.DocumentManager = require("document/DocumentManager");// CUT
+	
     // Config settings
     var DB_NAME    = 'change_history_db',
         DB_VERSION = '1.0',
@@ -553,7 +554,7 @@ define(function (require, exports, module) {
         )
             .done(function(id2) {
                 // Remove darker blue active class from currently active <li>
-                var $eachLi = $(document).find(".LHListItem");
+                var $eachLi = $(window.document).find(".LHListItem");
                 $eachLi.removeClass("activeLHModalLi");
                 
                 if (id2 === Dialogs.DIALOG_BTN_DELETE) {
@@ -573,7 +574,7 @@ define(function (require, exports, module) {
     }
     
     // For use with Local History dialog file list
-    window.deleteDocPromptDialog = deleteDocPromptDialog;
+    //window.deleteDocPromptDialog = deleteDocPromptDialog;
     
     exports.database = database;
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;

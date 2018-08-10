@@ -819,7 +819,7 @@ define(function (require, exports, module) {
                                 // Diff latest save to prevent accumulation of identical copies
                                 var lastKey = Object.keys(results.rows).pop();
 
-                                var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
+                                var decodedSavedDocTxt = He.decode(window.RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
 
                                 if (docTextToStore !== decodedSavedDocTxt) {
                                     Db.sendDocText(docTextToStore, filePath, fileTimestamp);
@@ -901,7 +901,6 @@ define(function (require, exports, module) {
     function dispatchAppQuitCancelledEvent() {
         exports.trigger(exports.APP_QUIT_CANCELLED);
     }
-
 
     /**
      * Opens the native OS save as dialog and saves document.
@@ -1006,7 +1005,7 @@ define(function (require, exports, module) {
                                         // Diff latest save to prevent accumulation of identical copies
                                         var lastKey = Object.keys(results.rows).pop();
 
-                                        var decodedSavedDocTxt = He.decode(RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
+                                        var decodedSavedDocTxt = He.decode(window.RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
 
                                         // Verify that doc to save is unique
                                         if (docTextToStore !== decodedSavedDocTxt) {

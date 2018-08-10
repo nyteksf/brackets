@@ -223,7 +223,7 @@
 		'decimal' : false
 	};
 
-	var decode = function(html, options) {
+    var decode = function(html, options) {
 		options = merge(options, decode.options);
 		var strict = options.strict;
 		if (strict && regexInvalidEntity.test(html)) {
@@ -316,6 +316,10 @@
 		'escape': escape,
 		'unescape': decode
 	};
+    
+    define(function (require, exports, module) {
+        module.exports = he;
+    });
 
 	// Some AMD build optimizers, like r.js, check for specific condition patterns
 	// like the following:
