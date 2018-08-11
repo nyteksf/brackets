@@ -90,15 +90,9 @@ define(function (require, exports, module) {
         Strings = require("strings"),
         He = require("thirdparty/he");
 
-    // Load globally for Local History
+    // Load globally for funneling methods to Local History UI
     // Used on client side via calls from FileUtils
-        window.LocalHistory    = require("./LocalHistory");
-        //window.Db              = require("editor/Db"),            // CUT
-        //window.He              = require("thirdparty/he"),        // CUT
-        //window.MainViewManager = require("view/MainViewManager"), // CUT
-        //window.FileUtils       = require("file/FileUtils"),       // CUT
-        //window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),  // CUT
-        //window.DocumentManager = require("document/DocumentManager");// CUT
+        window.LocalHistory = require("editor/LocalHistory");
 	
     // Config settings
     var DB_NAME    = 'change_history_db',
