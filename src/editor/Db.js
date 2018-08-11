@@ -90,8 +90,8 @@ define(function (require, exports, module) {
         Strings = require("strings"),
         He = require("thirdparty/he");
 
-    // Load globally for funneling methods to Local History UI
-    // Used on client side via calls from FileUtils
+    // Load globally for funneling methods to the Local History UI
+    // Is used on client side via event listeners set within FileUtils
         window.LocalHistory = require("editor/LocalHistory");
 	
     // Config settings
@@ -127,9 +127,7 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference(HOT_CLOSE, "boolean", false, {
         description: Strings.DESCRIPTION_HOT_CLOSE
     });
-    //PreferencesManager.definePreference(LOCAL_HISTORY, "boolean", true, {
-    //    description: Strings.DESCRIPTION_LOCAL_HISTORY
-    //});
+    
     var hotClose     = PreferencesManager.get(HOT_CLOSE),
 	localHistory = PreferencesManager.get(LOCAL_HISTORY);
 
@@ -160,9 +158,7 @@ define(function (require, exports, module) {
     function createTable (table, keyName, uniqueId) {
         var sessionId = "sessionId";
         
-        if (!uniqueId) {
-            // Do NOOP
-        } else {
+        if (uniqueId) {
             sessionId += " UNIQUE";
         }
         

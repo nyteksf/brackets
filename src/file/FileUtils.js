@@ -231,31 +231,25 @@ define(function (require, exports, module) {
     function makeDialogClickableFileList(fileList) {
         // fileList = [[docText, timestamp, filePath], [docText, timestamp, filePath], ...]    
         
-        if (fileList.length > 1) {
-            var firstFile  = fileList[0][1],
-                secondFile = fileList[1][1],
-                listIsInverted = (firstFile < secondFile) ? true : false;
-        }
-        
-        // Ensure proper descending order in dialog display because
-        // adding 'ORDER BY str__Timestamp DESC' to WebSQL query won't work
-        if (listIsInverted) {
-            fileList = fileList.reverse();
-        }
+        // Ensure results display in descending order because adding
+        // 'ORDER BY str__Timestamp DESC' to WebSQL query doesn't work
+        fileList = fileList.sort(function(a, b) {
+            return new Date(a[1]).getTime() < new Date(b[1]).getTime();
+        });
         
         var result = "<div id='localHistoryContainer'>";
 	    result += "<ul class='clickable-dialog-list'>";
         fileList.forEach(function (file) {
             // onClick() general steps:
-            //   0) Remove any prior click evt listeners on OPEN FILE button
-            //   1) Add new click evt listener to btn
-            //   2) Remove any active item CSS from modal <li>s
-            //   3) Add active item CSS to currently clicked <li> only
-            //   4) Remove silent active class from any x-close
-            //   5) Add silent active class to $(this) x-close
+            //   0) Remove any prior click evt listeners on the OPEN FILE button
+            //   1) Add new click evt listener to same btn
+            //   2) Remove any active item class from each modal <li>
+            //   3) Add active item class to currently clicked <li> only
+            //   4) Remove silent active class from any <li> x-close btn
+            //   5) Add silent active class to $(this) x-close btn only
             result += "<li class='LHListItem' onclick='window.LocalHistory.whenClickListItem(this)' timestamp='" + file[1] + "'>";
             result += "<span style='padding-right:3px;'>&bull;</span> " + file[1];
-            result += "<a href='#' onclick='window.LocalHistory.handleItemClose(this)' class='LHListItemXClose' title='Delete'>&times;</a>";
+            result += "<a href='#' onclick='event.stopPropagation(); event.preventDefault(); window.LocalHistory.handleItemClose(this);' class='LHListItemXClose' title='Delete'>&times;</a>";
             result += "</li>";
         });
         result += "</ul>";
