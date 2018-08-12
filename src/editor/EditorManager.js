@@ -76,15 +76,6 @@ define(function (require, exports, module) {
         StringUtils         = require("utils/StringUtils"),
         FileUtils           = require("file/FileUtils"),
         Db                  = require("editor/Db");
-    
-        // Load globally for Local History
-        window.Db              = require("editor/Db"),
-        window.He              = require("thirdparty/he"),
-        window.MainViewManager = require("view/MainViewManager"),
-        window.FileUtils       = require("file/FileUtils"),
-        window.DocumentCommandHandlers = require("document/LocalHistory__DocumentCommandHandlers"),
-        window.DocumentManager = require("document/DocumentManager");
-        
 
     /**
      * Currently focused Editor (full-size, inline, or otherwise)
@@ -824,9 +815,10 @@ define(function (require, exports, module) {
             
         // Ensure doc backed with master editor
         doc._ensureMasterEditor();
-		
-        var filename       = FileUtils.getBaseName(doc.file._path),
-            activePaneId   = 'first-pane';
+        
+        var currentTheme = doc._masterEditor._codeMirror.getOption("theme"),
+            filename     = FileUtils.getBaseName(doc.file._path),
+            activePaneId = 'first-pane';
         
         // Prompt user to open Local History for open document
         Dialogs.showModalDialog(

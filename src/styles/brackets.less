@@ -1968,21 +1968,26 @@ textarea.exclusions-editor {
     }
 }
 
-/* Local History modal */
+/* Local History UI */
 #localHistoryContainer {
-    padding-top: 12px;
+    margin-top: 12px;
     margin-right: 14px;
+    overflow: hidden;
+    border-right: 2px solid #C7C7C7; //-> Dark Theme #333;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
 }
 
 #localHistoryContainer ul {
     margin-right:  25px;
     list-style:    none;
-    border:        1px solid black;
+    border:        1px solid #C7C7C7; //-> Dark Theme 'black'
     border-radius: 5px;
     margin:        0 auto; 
     width:         100%; 
     font-weight:   bold;
     background:    #F5F5F5;
+    box-shadow:    inset 0px -1px 0px rgba(255,255,255,.3), inset 0px 0px 3px rgba(255,255,255,.3);
 }
 
 #localHistoryContainer .LHListItem {
@@ -1990,14 +1995,20 @@ textarea.exclusions-editor {
     color:        #333333;
     width:        100%;
     margin-right: 25px;
-    border:       1px solid #707372;
+    border:       1px solid #C7C7C7; //-> Dark Theme #707372;
     padding-left: 9px; 
-    background:   #F5F5F5;
+    //background:   #F5F5F5;
     font-weight:  bold;
+    text-shadow: -.25px -.25px 0px rgba(245,245,245,.5);
+    background: rgb(208,216,221); // #dadee3, #dedede, #d0d7db
+    background: linear-gradient(180deg, #DBDFE4 0%, #DFDFDF 50%, #D2D9DD 100%);
+    box-shadow: inset -1px -1px 0px rgba(245,245,245,.5), inset 0px 0px 1px rgba(255,255,255,.3), 1px 0px 1px rgba(245,245,245,.3);
 }
 
 #localHistoryContainer .LHListItem:hover {
-    background: #D8DFEA;
+    //background: #D8DFEA;
+    background: linear-gradient(180deg, #D2D9DD 0%, #DFDFDF 50%, #DBDFE4 100%);
+    box-shadow: 0px 1px 0px rgba(245,245,245,.5) !important;
 }
 
 #localHistoryContainer .LHListItem:first-child {
@@ -2019,10 +2030,9 @@ textarea.exclusions-editor {
 }
 
 .activeLHModalLi {
-    background: #6D84B4 !important;
+    background: linear-gradient(180deg, #98A6B2 0%, #94a2af 50%, #93A2AE 100%) !important; //-> Dark Theme #6D84B4
     color:      #F5F5F5 !important;
 }
-
 
 @-webkit-keyframes autocomplete {
     0%   { opacity: 0.6; -webkit-transform: translate3d(0, 0, 0) scale(0.6); }

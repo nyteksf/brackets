@@ -93,7 +93,7 @@ define(function (require, exports, module) {
     // Load globally for funneling methods to the Local History UI
     // Is used on client side via event listeners set within FileUtils
         window.LocalHistory = require("editor/LocalHistory");
-	
+	 
     // Config settings
     var DB_NAME    = 'change_history_db',
         DB_VERSION = '1.0',
