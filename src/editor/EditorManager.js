@@ -75,6 +75,7 @@ define(function (require, exports, module) {
         FileViewController  = require("project/FileViewController"),
         StringUtils         = require("utils/StringUtils"),
         FileUtils           = require("file/FileUtils"),
+        LocalHistory        = require("editor/LocalHistory"),
         Db                  = require("editor/Db");
 
     /**
@@ -845,65 +846,8 @@ define(function (require, exports, module) {
                     // Do NOOP
                     result.reject();
                 } else {
-                    var $body = $('body'),
-                        currentTheme = doc._masterEditor._codeMirror.getOption("theme");
-                    
-                    setTimeout(function() {
-                        // ACTUAL COMMAND TO RUN WHEN POSSIBLE:
-                        // LocalHistory.setUIColors(currentTheme);
-                        
-                        // Find UI elements in DOM
-                        var $localHistoryContainer = $body.find(".localHistoryContainer"),
-                            $LhContainerUl = $body.find(".localHistoryContainer ul"),
-                            $listItems = $body.find(".LHListItem");
-                        
-                        // Adjust Local History UI theme compatibility
-                        if (currentTheme === "light-theme") {
-                            
-                            // Setting class for LI Container (Parent)
-                            $localHistoryContainer.addClass("LHContainerLight");
-                            
-                            // Setting class for LI Container (Child)
-                            $LhContainerUl.addClass("LhUlLight");
-                            
-                            // Setting class for active LI
-                             $listItems
-                                .on("click", function() {
-                                    $listItems.removeClass("lightLiActive");    
-                                    $(this).addClass("lightLiActive");
-                                });
-
-                            // Setting class for inactive List Items
-                            $listItems.addClass("LHListItemLight");
-
-                            // Setting class for LI hover effects
-                            $listItems.on("mouseover", function() {
-                                $listItems.removeClass("LHListItemLightHover");
-                                $(this).addClass("LHListItemLightHover");
-                            });
-                        } 
-                        else if (currentTheme === "dark-theme") {
-                            $localHistoryContainer.addClass("LHContainerDark");
-                            $LhContainerUl.addClass("LhUlDark");
-                            $listItems.addClass("LHListItemDark");
-                            $listItems
-                                .on("click", function() {
-                                    $listItems.removeClass("darkLiActive");
-                                    $listItems.removeClass("LHListItemDarkSwapWhenActive");
-                                    $listItems.addClass("LHListItemDark");
-                                    $(this).removeClass("LHListItemDark");
-                                    $(this).addClass("LHListItemDarkSwapBeforeActive");
-                                    $(this).addClass("darkLiActive");
-                                });
-                            $listItems
-                                .on("mouseover", function() {
-                                    $listItems.removeClass("LHListItemDarkHover");
-                                    $(this).addClass("LHListItemDarkHover");
-                                });
-                        } else {
-                            // Custom theme: User can add styling for custom theme here
-                        }
-                    }, 250);
+                    var currentTheme = doc._masterEditor._codeMirror.getOption("theme");
+                    LocalHistory.setUIColors(currentTheme);
                     
                     var limitedItemList = [];
             
