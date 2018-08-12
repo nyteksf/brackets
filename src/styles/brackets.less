@@ -1969,19 +1969,24 @@ textarea.exclusions-editor {
 }
 
 /* Local History UI */
-#localHistoryContainer {
+.localHistoryContainer {
     margin-top: 12px;
     margin-right: 14px;
-    overflow: hidden;
-    border-right: 2px solid #C7C7C7; //-> Dark Theme #333;
-    border-top-right-radius: 5px;
-    border-bottom-right-radius: 5px;
+    border-radius: 5px;
+    color: #333333 !important;
 }
 
-#localHistoryContainer ul {
+.LHContainerLight {
+    border-right: 1px solid #C7C7C7;
+}
+
+.LHContainerDark {
+    border-right: 2px solid #C7C7C7; //#333333;
+}
+
+.localHistoryContainer ul {
     margin-right:  25px;
     list-style:    none;
-    border:        1px solid #C7C7C7; //-> Dark Theme 'black'
     border-radius: 5px;
     margin:        0 auto; 
     width:         100%; 
@@ -1990,49 +1995,95 @@ textarea.exclusions-editor {
     box-shadow:    inset 0px -1px 0px rgba(255,255,255,.3), inset 0px 0px 3px rgba(255,255,255,.3);
 }
 
-#localHistoryContainer .LHListItem {
-    background:   #F5F5F5;
-    color:        #333333;
+.LhUlLight {
+    //border: 1px solid #C7C7C7;
+}
+
+.LhUlDark {
+    //border: 1px solid #C7C7C7; //#333333;
+}
+
+.localHistoryContainer .LHListItem {
+    color:        #333333; 
     width:        100%;
     margin-right: 25px;
-    border:       1px solid #C7C7C7; //-> Dark Theme #707372;
     padding-left: 9px; 
-    //background:   #F5F5F5;
     font-weight:  bold;
-    text-shadow: -.25px -.25px 0px rgba(245,245,245,.5);
-    background: rgb(208,216,221); /* #DBDFE4, #DFDFDF, #d0d7db */
-    background: linear-gradient(180deg, #DBDFE4 0%, #DFDFDF 50%, #D2D9DD 100%);
-    box-shadow: inset -1px -1px 0px rgba(245,245,245,.5), inset 0px 0px 1px rgba(255,255,255,.3), 1px 0px 1px rgba(245,245,245,.3);
+    text-shadow:  -.2px -.2px 0px rgba(245,245,245,.5);
+    box-shadow:   inset -1px -1px 0px rgba(245,245,245,.5), inset 0px 0px 1px rgba(255,255,255,.3), 1px 0px 1px rgba(245,245,245,.3);
 }
 
-#localHistoryContainer .LHListItem:hover {
-    //background: #D8DFEA;
+.LHListItemLight {
+    background:    rgb(208,216,221);
+    background:    linear-gradient(180deg, #DBDFE4 0%, #DFDFDF 50%, #D2D9DD 100%);
+    color:         #333333;
+    border-top:    1px solid #C7C7C7;
+    border-bottom: 1px solid #C7C7C7;
+    border-left:   2px solid #C7C7C7;
+    border-right:  2px solid #C7C7C7;
+}
+
+.LHListItemDark {
+    background:    #F5F5F5;
+    color:         #333333 !important;
+    border-top:    1px solid #C7C7C7;
+    border-bottom: 1px solid #C7C7C7;
+    border-left:   2px solid #C7C7C7;
+    border-right:  2px solid #C7C7C7;
+}
+
+.LHListItemDarkSwapBeforeActive {
+    background:    #F5F5F5;
+    border-top:    1px solid #C7C7C7;
+    border-bottom: 1px solid #C7C7C7;
+    border-left:   2px solid #C7C7C7;
+    border-right:  2px solid #C7C7C7;
+}
+
+.localHistoryContainer .LHListItem:hover:not(.lightLiActive, .darkLiActive) {
+    box-shadow: 0px 1px 0px rgba(245,245,245,.5);
+}
+
+.LHListItemLightHover {
     background: linear-gradient(180deg, #D2D9DD 0%, #DFDFDF 50%, #DBDFE4 100%);
-    box-shadow: 0px 1px 0px rgba(245,245,245,.5) !important;
 }
 
-#localHistoryContainer .LHListItem:first-child {
+.LHListItemDarkHover {
+    background: #D8DFEA;
+}
+
+.localHistoryContainer .LHListItem:first-child {
     border-top-right-radius: 5px;
     border-top-left-radius:  5px;
+    border-top: 2px solid #C7C7C7 !important;
 }
 
-#localHistoryContainer .LHListItem:last-child {
+.localHistoryContainer .LHListItem:last-child {
     border-bottom-right-radius: 5px;
     border-bottom-left-radius:  5px;
+    border-bottom: 2px solid #C7C7C7 !important;
 }
 
-#localHistoryContainer .LHListItemXClose {
+.localHistoryContainer .LHListItemXClose {
     font-weight:  bold;
-    color:        #333;
+    color:        #333333;
     float:        right;
     padding:      0 4px;
-    margin-right: 278px;
+    margin-right: 265px;
 }
 
-.activeLHModalLi { /* #98A6B2, #94a2af, #93A2AE */
-    background: linear-gradient(180deg, #a2aeb9 0%, #99a6b3 50%, #9dabb6 100%) !important; /*/-> Dark Theme #6D84B4 */
+.activeLHModalLi {
+    box-shadow: inset 0 -1px 1px rgba(245,245,245,.3), inset 0 1px 1px rgba(0,0,0,.5);
+}
+
+.lightLiActive { /* 1st: a2aeb9 */
+    background: linear-gradient(180deg, #8e9caa 0%, #99a6b3 50%, #9dabb6 100%) !important;
     color:      #F5F5F5 !important;
-    box-shadow: inset -1px -1px 2px rgba(0,0,0,.3), inset 1px 1px 2px rgba(245,245,245,.15);
+}
+
+.darkLiActive {
+    background: #6D84B4 !important;
+    color:      #F5F5F5 !important;
 }
 
 @-webkit-keyframes autocomplete {
