@@ -36,7 +36,7 @@ define(function (require, exports, module) {
         Commands        = require("command/Commands"),
         He              = require("thirdparty/he"),
         Db              = require("editor/Db"),
-        ThemeManager = brackets.getModule("view/ThemeManager"),
+        ThemeManager    = brackets.getModule("view/ThemeManager"),
         FileUtils       = require("file/FileUtils");
 
     // Local History related methods for use on the client side
