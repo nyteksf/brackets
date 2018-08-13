@@ -804,6 +804,19 @@ define(function (require, exports, module) {
             });
     }
 
+    // Verify that dialog truly exists before executing any associated code
+    function checkForOpenDialog(cb) {
+        var intervalId = setInterval(function() {
+            if ($(".modal-footer").find(".btn.primary").length > 0) {
+                console.log("Local History Container Exists")
+                clearInterval(intervalId);
+                cb();
+            } else { 
+                console.log("ELEMENT '.LocalHistoryContainer' NOT FOUND")
+            }
+        }, 250);
+    };
+    
     /**
      * Toggles Local History dialog allowing for coarse grained version control
      */
@@ -851,9 +864,7 @@ define(function (require, exports, module) {
                     
                     var limitedItemList = [];
             
-                    setTimeout(function() {
-                        $(".modal-footer").find(".btn.primary").attr("disabled", "disabled");
-                    }, 250);
+                    checkForOpenDialog(function(){$(".modal-footer").find(".btn.primary").attr("disabled", "disabled");});
                                
                     // GET LIST OF LOCAL HISTORY BACKUPS FOR DIALOG
                     Db.database.transaction(function (tx) {
@@ -914,10 +925,7 @@ define(function (require, exports, module) {
                                         ]
                                     )
                                         .done(function (id) {
-                                            setTimeout(function() {
-                                                // Clear attr for other modals
-                                                $(".modal-footer").find(".btn.primary").removeAttr("disabled");
-                                            }, 250);
+                                            checkForOpenDialog(function(){$(".modal-footer").find(".btn.primary").removeAttr("disabled");});
                                         
                                             if (id === Dialogs.DIALOG_BTN_CANCEL) {
                                                 result.reject();
@@ -931,9 +939,7 @@ define(function (require, exports, module) {
                                             }
                                         });
                                 } else {  // No backups for current file in Local History
-                                    setTimeout(function() {
-                                        $(".modal-footer").find(".btn.primary").removeAttr("disabled");
-                                    }, 250);
+                                    checkForOpenDialog(function(){$(".modal-footer").find(".btn.primary").removeAttr("disabled");});
                                     Dialogs.showModalDialog(
                                         DefaultDialogs.DIALOG_ID_LOCAL_HISTORY,
                                         Strings.LOCAL_HISTORY_TITLE,
@@ -1038,6 +1044,7 @@ define(function (require, exports, module) {
     exports.closeInlineWidget             = closeInlineWidget;
     exports.openDocument                  = openDocument;
     exports.canOpenPath                   = canOpenPath;
+    exports.checkForOpenDialog            = checkForOpenDialog;
 
     // Convenience Methods
     exports.getActiveEditor               = getActiveEditor;

@@ -1995,44 +1995,32 @@ textarea.exclusions-editor {
     box-shadow:    inset 0px -1px 0px rgba(255,255,255,.3), inset 0px 0px 3px rgba(255,255,255,.3);
 }
 
-.LhUlLight {
-    //border: 1px solid #C7C7C7;
-}
-
-.LhUlDark {
-    //border: 1px solid #C7C7C7; //#333333;
-}
-
 .localHistoryContainer .LHListItem {
     color:        #333333; 
     width:        100%;
     margin-right: 25px;
     padding-left: 9px; 
     font-weight:  bold;
-    text-shadow:  -.2px -.2px 0px rgba(245,245,245,.5);
+    text-shadow:  -.3px -.3px 0px rgba(245,245,245,.5);
     box-shadow:   inset -1px -1px 0px rgba(245,245,245,.5), inset 0px 0px 1px rgba(255,255,255,.3), 1px 0px 1px rgba(245,245,245,.3);
+    border-top:    1px solid #C7C7C7;
+    border-bottom: 1px solid #C7C7C7;
+    border-left:   2px solid #C7C7C7;
+    border-right:  2px solid #C7C7C7;
 }
 
 .LHListItemLight {
     background:    rgb(208,216,221);
     background:    linear-gradient(180deg, #DBDFE4 0%, #DFDFDF 50%, #D2D9DD 100%);
-    color:         #333333;
-    border-top:    1px solid #C7C7C7;
-    border-bottom: 1px solid #C7C7C7;
-    border-left:   2px solid #C7C7C7;
-    border-right:  2px solid #C7C7C7;
 }
 
 .LHListItemDark {
     background:    #F5F5F5;
+    background:    linear-gradient(180deg, #f9f9f9 0%, rgba(245,245,245,1) 44%, rgba(240,240,240,1) 100%);
     color:         #333333 !important;
-    border-top:    1px solid #C7C7C7;
-    border-bottom: 1px solid #C7C7C7;
-    border-left:   2px solid #C7C7C7;
-    border-right:  2px solid #C7C7C7;
 }
 
-.LHListItemDarkSwapBeforeActive {
+.LHListItemDarkBeforeActive {
     background:    #F5F5F5;
     border-top:    1px solid #C7C7C7;
     border-bottom: 1px solid #C7C7C7;
@@ -2041,15 +2029,17 @@ textarea.exclusions-editor {
 }
 
 .localHistoryContainer .LHListItem:hover:not(.lightLiActive, .darkLiActive) {
-    box-shadow: 0px 1px 0px rgba(245,245,245,.5);
+    box-shadow: 0px 1px 3px rgba(245,245,245,.5);
 }
 
 .LHListItemLightHover {
+    background: #D1D0D0;
     background: linear-gradient(180deg, #D2D9DD 0%, #DFDFDF 50%, #DBDFE4 100%);
 }
 
 .LHListItemDarkHover {
     background: #D8DFEA;
+    background: linear-gradient(180deg, #A7B7D0 0%, #B0BED4 62%, #B8C5D9 100%);
 }
 
 .localHistoryContainer .LHListItem:first-child {
@@ -2076,13 +2066,14 @@ textarea.exclusions-editor {
     box-shadow: inset 0 -1px 1px rgba(245,245,245,.3), inset 0 1px 1px rgba(0,0,0,.5);
 }
 
-.lightLiActive { /* 1st: a2aeb9 */
+.lightLiActive {
     background: linear-gradient(180deg, #8e9caa 0%, #99a6b3 50%, #9dabb6 100%) !important;
     color:      #F5F5F5 !important;
 }
 
 .darkLiActive {
     background: #6D84B4 !important;
+    background: linear-gradient(180deg, rgba(89,115,170,1) 0%, rgba(109,132,180,1) 42%, rgba(99,123,175,1) 100%);
     color:      #F5F5F5 !important;
 }
 

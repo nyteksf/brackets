@@ -110,6 +110,9 @@ define(function (require, exports, module) {
                     confirmDeleteDocDialog();
                 } else {
                     $(".lastClickedXClose").parent().show();
+                    setTimeout(function() {
+                        $(window.document).find(".dialog-button.btn.primary").prop("disabled", "disabled");
+                    }, 250);
                 }
             });
     }
@@ -119,7 +122,7 @@ define(function (require, exports, module) {
         $(window.document).find(".dialog-button.btn.primary").removeAttr("disabled");
         $(window.document).find(".dialog-button.btn.primary").off("click");
         $(window.document).find(".dialog-button.btn.primary").on("click", function() {
-            var activeLi = $("#localHistoryContainer").find(".activeLHModalLi");
+            var activeLi = $(".localHistoryContainer").find(".activeLHModalLi");
             var timestamp = activeLi[0].attributes[2].value;
             var pathToOpenFile = window.LocalHistory.MainViewManager.getCurrentlyViewedPath("first-pane"),
                 doc = window.LocalHistory.DocumentManager.getOpenDocumentForPath(pathToOpenFile);
@@ -131,13 +134,11 @@ define(function (require, exports, module) {
                         var savedDocTextToLoad = window.LocalHistory.He.decode(window.RawDeflate.inflate(results.rows[0].str__DocTxt));
 
                         if (doc.isDirty) {
-                            console.log("DIRTY DOC");
                             window.LocalHistory.DocumentCommandHandlers.handleFileSave({
                                 doc: doc,
                                 savedDocText: savedDocTextToLoad
                             });
                         } else {
-                            console.log("CLEAN DOC");
                             doc._masterEditor._codeMirror.setValue(savedDocTextToLoad);
                             doc._masterEditor._codeMirror.refresh();
                             doc._masterEditor._codeMirror.clearHistory(); 
@@ -145,7 +146,6 @@ define(function (require, exports, module) {
                             window.LocalHistory.FileUtils.writeText(doc.file, savedDocTextToLoad, true)
                                 .done(function() {
                                     doc.notifySaved();
-                                    console.log("CLEAN DOC: DONE SAVING LH DOC CHANGE");
                                 });
                         }
                     }, 
@@ -156,19 +156,19 @@ define(function (require, exports, module) {
             });
         });
         
-        $("#localHistoryContainer li").removeClass("activeLHModalLi");
+        $(".localHistoryContainer li").removeClass("activeLHModalLi");
         $(that).addClass("activeLHModalLi");
     }
     
     // Local History UI: handle x-close click
     function handleItemClose(that) {
-        var thisLi = $(that).parent(),
+        var $thisLi = $(that).parent(),
             timestamp = $(that).parent().attr("timestamp"),
             pathToCurFile = window.LocalHistory.MainViewManager.getCurrentlyViewedPath("first-pane");
         
         window.LocalHistory.deleteDocPromptDialog(pathToCurFile, timestamp);
-        $(window.document).find(".dialog-button.btn.primary").prop("disabled", "disabled");
-        $(that).parent().hide();
+        $thisLi.hide();
+        $thisLi.removeClass("lightLiActive darkLiActive activeLHModalLi");
         $(".LHListItemXClose").removeClass("lastClickedXClose");
         $(that).addClass("lastClickedXClose");
     }
@@ -176,7 +176,7 @@ define(function (require, exports, module) {
     function setUIColors(currentTheme) {
         var $body = $('body');
         
-        setTimeout(function() {
+        EditorManager.checkForOpenDialog(function() {
             // Find all associated UI elements in DOM
             var $localHistoryContainer = $body.find(".localHistoryContainer"),
                 $LhContainerUl = $body.find(".localHistoryContainer ul"),
@@ -184,7 +184,6 @@ define(function (require, exports, module) {
                         
             // Adjust Local History UI theme to match master theme of Brackets
             if (currentTheme === "light-theme") {
-                            
                 // Setting class for LI Container (Parent)
                 $localHistoryContainer.addClass("LHContainerLight");
                             
@@ -202,9 +201,14 @@ define(function (require, exports, module) {
                 $listItems.addClass("LHListItemLight");
 
                 // Setting class for LI hover effects
-                $listItems.on("mouseover", function() {
+                $listItems
+                    .on("mouseover", function() {
                     $listItems.removeClass("LHListItemLightHover");
                     $(this).addClass("LHListItemLightHover");
+                });
+                $listItems
+                    .on("mouseout", function() {
+                    $(this).removeClass("LHListItemLightHover");
                 });
             } 
             else if (currentTheme === "dark-theme") {
@@ -225,10 +229,12 @@ define(function (require, exports, module) {
                         $listItems.removeClass("LHListItemDarkHover");
                         $(this).addClass("LHListItemDarkHover");
                     });
-            } else {
-                // Custom theme: User can add styling for custom theme here
+                $listItems
+                    .on("mouseout", function() {
+                        $(this).removeClass("LHListItemDarkHover");
+                    });
             }
-        }, 250);
+        });
     };
 
     // For use with Local History dialog file list on client side
