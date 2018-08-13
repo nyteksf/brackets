@@ -40,11 +40,6 @@ define(function (require, exports, module) {
         FileUtils       = require("file/FileUtils");
 
     // Local History related methods for use on the client side
-    // Condensed from:-
-    //    -MainViewManager.js
-    //    -DocumentCommandHandlers.js
-    //    -FileUtils.js
-    //    -DocumentManager.js
 
     /*
      * Confirm deletion of individual Local History table row item
@@ -245,10 +240,4 @@ define(function (require, exports, module) {
     exports.deleteDocPromptDialog    = deleteDocPromptDialog;
     exports.whenClickListItem        = whenClickListItem;
     exports.handleItemClose          = handleItemClose;
-    exports.MainViewManager          = MainViewManager;  /* <-getCurrentlyViewedPath() */
-    exports.DocumentCommandHandlers  = DocumentCommandHandlers; /* <-.handleFileSave() */
-    exports.FileUtils       = FileUtils;  /* <-.writeText() */
-    exports.DocumentManager = DocumentManager; /* <-.getOpenDocumentForPath() */
-    exports.He              = He;  /* <-.decode() */
-    exports.Db              = Db;  /* <-.database.transaction() */
 });
