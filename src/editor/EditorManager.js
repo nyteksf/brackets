@@ -806,13 +806,10 @@ define(function (require, exports, module) {
 
     // Verify that dialog truly exists before executing any associated code
     function checkForOpenDialog(cb) {
-        var intervalId = setInterval(function() {
+        var intervalId = window.setInterval(function() {
             if ($(".modal-footer").find(".btn.primary").length > 0) {
-                console.log("Local History Container Exists")
-                clearInterval(intervalId);
+                window.clearInterval(intervalId);
                 cb();
-            } else { 
-                console.log("ELEMENT '.LocalHistoryContainer' NOT FOUND")
             }
         }, 250);
     };

@@ -193,7 +193,6 @@ define(function (require, exports, module) {
             var $localHistoryContainer = $body.find(".localHistoryContainer"),
                 $LhContainerUl = $body.find(".localHistoryContainer ul"),
                 $listItems = $body.find(".LHListItem");
-            console.log(currentTheme)            
             // Adjust Local History UI theme to match master theme of Brackets
             if (currentTheme === "light-theme") {
                 // Setting class for LI Container (Parent)
