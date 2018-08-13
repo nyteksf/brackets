@@ -39,8 +39,22 @@ define(function (require, exports, module) {
         ThemeManager    = brackets.getModule("view/ThemeManager"),
         FileUtils       = require("file/FileUtils");
 
-    // Local History related methods for use on the client side
+    /******************************************************************\
+     * Local History related methods for use on the client side. This *
+     * module allows for coarse grained version control for documents *
+     * edited within Brackets. It allows a user to revert backward or *
+     * move forward to any among an accumulated history of            *
+     * automatically saved document copies. These copies are sorted   *
+     * by timestamp in descending order. Whenever any dirty open      *
+     * document is being saved, a copy thereof is also silently saved *
+     * to a SQLite3 database using standard WebSQL queries. Moreover, *
+     * any unsaved document changes will be captured, and a dialog    *
+     * prompt thereafter allows the new changes to be saved to disk   *
+     * and the database simultaneously such that nothing is lost when *
+     * overwritten by Local History on change.                        *
+    \******************************************************************/ 
 
+    
     /*
      * Confirm deletion of individual Local History table row item
      */
@@ -164,13 +178,13 @@ define(function (require, exports, module) {
         
         window.LocalHistory.deleteDocPromptDialog(pathToCurFile, timestamp);
         $thisLi.hide();
-        $thisLi.removeClass("lightLiActive darkLiActive activeLHModalLi");
-        $listItems.removeClass("LHListItemDarkBeforeActive");
+        $listItems.removeClass("lightLiActive darkLiActive activeLHModalLi LHListItemDarkBeforeActive");
         $listItems.addClass("LHListItemDark");
         $(".LHListItemXClose").removeClass("lastClickedXClose");
         $(that).addClass("lastClickedXClose");
     }
     
+    // Switch between light and dark skins for compatibility with corresponding themes
     function setUIColors(currentTheme) {
         var $body = $('body');
         
@@ -235,9 +249,15 @@ define(function (require, exports, module) {
         });
     };
 
-    // For use with Local History dialog file list on client side
     exports.setUIColors              = setUIColors;
     exports.deleteDocPromptDialog    = deleteDocPromptDialog;
     exports.whenClickListItem        = whenClickListItem;
     exports.handleItemClose          = handleItemClose;
+    
+    exports.MainViewManager          = MainViewManager;  /* <-.getCurrentlyViewedPath() */
+    exports.DocumentCommandHandlers  = DocumentCommandHandlers; /* <-.handleFileSave() */
+    exports.FileUtils       = FileUtils;  /* <-.writeText() */
+    exports.DocumentManager = DocumentManager; /* <-.getOpenDocumentForPath() */
+    exports.He              = He;  /* <-.decode() */
+    exports.Db              = Db;  /* <-.database.transaction() */
 });
