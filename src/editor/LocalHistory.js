@@ -162,13 +162,16 @@ define(function (require, exports, module) {
     
     // Local History UI: handle x-close click
     function handleItemClose(that) {
-        var $thisLi = $(that).parent(),
-            timestamp = $(that).parent().attr("timestamp"),
+        var $thisLi       = $(that).parent(),
+            $listItems    = $(window.document).find(".LHListItem"),
+            timestamp     = $(that).parent().attr("timestamp"),
             pathToCurFile = window.LocalHistory.MainViewManager.getCurrentlyViewedPath("first-pane");
         
         window.LocalHistory.deleteDocPromptDialog(pathToCurFile, timestamp);
         $thisLi.hide();
         $thisLi.removeClass("lightLiActive darkLiActive activeLHModalLi");
+        $listItems.removeClass("LHListItemDarkBeforeActive");
+        $listItems.addClass("LHListItemDark");
         $(".LHListItemXClose").removeClass("lastClickedXClose");
         $(that).addClass("lastClickedXClose");
     }
@@ -211,17 +214,17 @@ define(function (require, exports, module) {
                     $(this).removeClass("LHListItemLightHover");
                 });
             } 
-            else if (currentTheme === "dark-theme") {
+            else if (currentTheme === "dark-theme" || currentTheme === "cake") {
                 $localHistoryContainer.addClass("LHContainerDark");
                 $LhContainerUl.addClass("LhUlDark");
                 $listItems.addClass("LHListItemDark");
                 $listItems
                     .on("click", function() {
                         $listItems.removeClass("darkLiActive");
-                        $listItems.removeClass("LHListItemDarkSwapWhenActive");
-                        $listItems.addClass("LHListItemDark");
+                        $listItems.removeClass("LHListItemDarkBeforeActive");
+                        $listItems.addClass("LHListItemDark"); 
                         $(this).removeClass("LHListItemDark");
-                        $(this).addClass("LHListItemDarkSwapBeforeActive");
+                        $(this).addClass("LHListItemDarkBeforeActive");
                         $(this).addClass("darkLiActive");
                     });
                 $listItems
