@@ -47,13 +47,13 @@ define(function (require, exports, module) {
      * automatically saved document copies. These copies are sorted   *
      * by timestamp in descending order. Whenever any dirty open      *
      * document is being saved, a copy thereof is also silently saved *
-     * to a SQLite3 database using standard WebSQL queries. Moreover, *
-     * any unsaved document changes will be captured, and a dialog    *
-     * prompt thereafter allows the new changes to be saved to disk   *
-     * and the database simultaneously such that nothing is lost when *
-     * overwritten by Local History on change.                        *
+     * to a SQLite3 database using standard WebSQL queries. Untitled  *
+     * documents are also saved to the database on doSaveAs().        *
+     * Moreover, any unsaved document changes will be captured, and a *
+     * dialog prompt thereafter allows the new changes to be saved to *
+     * disk and the database simultaneously such that nothing is lost *
+     * when overwritten by Local History on change.                   *
     \******************************************************************/ 
-
     
     /*
      * Confirm deletion of individual Local History table row item
