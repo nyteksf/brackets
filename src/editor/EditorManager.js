@@ -925,16 +925,21 @@ define(function (require, exports, module) {
                                         ]
                                     )
                                         .done(function (id) {
-                                            checkForOpenDialog(function(){$(".modal-footer").find(".btn.primary").removeAttr("disabled");});
-                                        
                                             if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                                                setTimeout(function() {
+                                                    $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                                }, 500);
                                                 result.reject();
                                             } 
                                             else if (id === Dialogs.DIALOG_BTN_DELETEALL) {
+                                                checkForOpenDialog(function(){$(".modal-footer").find(".btn.primary").removeAttr("disabled");});
                                                 delallConfirmDialog(pathToOpenFile);
-                                                
+                                                result.resolve();
                                             } else {
                                                 // "File Open" case:
+                                                setTimeout(function() {
+                                                    $(".modal-footer").find(".btn.primary").removeAttr("disabled");
+                                                }, 250);
                                                 result.resolve();
                                             }
                                         });

@@ -128,7 +128,7 @@ define(function (require, exports, module) {
         description: Strings.DESCRIPTION_HOT_CLOSE
     });
     
-    var hotClose     = PreferencesManager.get(HOT_CLOSE),
+    var hotClose = PreferencesManager.get(HOT_CLOSE),
 	localHistory = PreferencesManager.get(LOCAL_HISTORY);
 
     // Debounce syncing of new unsaved changes to db
