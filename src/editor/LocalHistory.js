@@ -222,7 +222,7 @@ define(function (require, exports, module) {
                     $(this).removeClass("LHListItemLightHover");
                 });
             } 
-            else if (currentTheme === "dark-theme") {
+            else if (currentTheme === "dark-theme" || currentTheme === "cake") {
                 $localHistoryContainer.addClass("LHContainerDark");
                 $LhContainerUl.addClass("LhUlDark");
                 $listItems.addClass("LHListItemDark");

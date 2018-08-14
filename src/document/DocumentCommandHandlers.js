@@ -996,19 +996,17 @@ define(function (require, exports, module) {
                                 [newFile._path],
                                 function (tx, results) {
                                     var fileTimestamp = new Date(),
-                                        docTextToStore = window.RawDeflate.deflate(He.encode(doc.getText(true)));
-                                    if (results.rows.length > 0) {
-                                        // Diff latest save to prevent accumulation of identical copies
-                                        var lastKey = Object.keys(results.rows).pop();
-
-                                        var decodedSavedDocTxt = He.decode(window.RawDeflate.inflate(results.rows[lastKey].str__DocTxt));
-
-                                        // Verify that doc to save is unique
-                                        if (docTextToStore !== decodedSavedDocTxt) {
-                                            Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
-                                        }
-                                    } else {
+                                        docTextToStore = doc.getText(true);
+                                
+                                    if (results.rows.length < 1) {
+                                        console.log("HAS NO RECORD: ELSE CLAUSE")
+                                        
                                         Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
+                                    } else {
+                                        // Filepath is not new despite file itself being new
+                                        // Purge all existing records, then save
+                                        Db.delRows(newFile._path, null, true)
+                                            .done(Db.sendDocText(docTextToStore, newFile._path, fileTimestamp););
                                     }
                                 },
                                 function (tx, error) {

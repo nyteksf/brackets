@@ -983,7 +983,7 @@ define(function (require, exports, module) {
             saveAsDefaultPath,
             defaultName,
             result = new $.Deferred();
-
+        
         function _doSaveAfterSaveDialog(path) {
             var newFile;
 

@@ -882,6 +882,8 @@ define(function (require, exports, module) {
                                         }
                                     }
                                     
+                                    console.log(fileListForDialog)
+                                    
                                     // Accept only the latest 10 records displayed to DOM
                                     if (fileListForDialog.length > 10) {
                                         for (var i=0, len=10; i<len; i++) {
