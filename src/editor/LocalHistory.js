@@ -174,12 +174,15 @@ define(function (require, exports, module) {
         var $thisLi       = $(that).parent(),
             $listItems    = $(window.document).find(".LHListItem"),
             timestamp     = $(that).parent().attr("timestamp"),
-            pathToCurFile = window.LocalHistory.MainViewManager.getCurrentlyViewedPath("first-pane");
+            pathToCurFile = window.LocalHistory.MainViewManager.getCurrentlyViewedPath("first-pane"),
+            activeEditor  = EditorManager.getActiveEditor(),
+            activeDoc     = activeEditor.document,
+            currentTheme  = activeDoc._masterEditor._codeMirror.getOption("theme");
         
         window.LocalHistory.deleteDocPromptDialog(pathToCurFile, timestamp);
         $thisLi.hide();
         $listItems.removeClass("lightLiActive darkLiActive activeLHModalLi LHListItemDarkBeforeActive");
-        $listItems.addClass("LHListItemDark");
+        setUIColors(currentTheme);
         $(".LHListItemXClose").removeClass("lastClickedXClose");
         $(that).addClass("lastClickedXClose");
     }
@@ -222,7 +225,7 @@ define(function (require, exports, module) {
                     $(this).removeClass("LHListItemLightHover");
                 });
             } 
-            else if (currentTheme === "dark-theme" || currentTheme === "cake") {
+            else if (currentTheme === "dark-theme") {
                 $localHistoryContainer.addClass("LHContainerDark");
                 $LhContainerUl.addClass("LhUlDark");
                 $listItems.addClass("LHListItemDark");

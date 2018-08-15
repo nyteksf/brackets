@@ -998,15 +998,13 @@ define(function (require, exports, module) {
                                     var fileTimestamp = new Date(),
                                         docTextToStore = doc.getText(true);
                                 
-                                    if (results.rows.length < 1) {
-                                        console.log("HAS NO RECORD: ELSE CLAUSE")
-                                        
+                                    if (results.rows.length === 0) {
                                         Db.sendDocText(docTextToStore, newFile._path, fileTimestamp);
                                     } else {
                                         // Filepath is not new despite file itself being new
                                         // Purge all existing records, then save
                                         Db.delRows(newFile._path, null, true)
-                                            .done(Db.sendDocText(docTextToStore, newFile._path, fileTimestamp););
+                                            .done(Db.sendDocText(docTextToStore, newFile._path, fileTimestamp));
                                     }
                                 },
                                 function (tx, error) {
@@ -1043,7 +1041,7 @@ define(function (require, exports, module) {
             origPath = doc.file.fullPath;
             // If the document is an untitled document, we should default to project root.
             if (doc.isUntitled()) {
-                // (Issue #4489) if we're saving an untitled document, go ahead and switch to this document
+                // (Issue #4489) iff we're saving an untitled document, go ahead and switch to this document
                 //   in the editor, so that if we're, for example, saving several files (ie. Save All),
                 //   then the user can visually tell which document we're currently prompting them to save.
                 var info = MainViewManager.findInAllWorkingSets(origPath).shift();
