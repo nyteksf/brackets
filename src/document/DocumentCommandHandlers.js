@@ -487,7 +487,7 @@ define(function (require, exports, module) {
             paneId = (commandData && commandData.paneId) || MainViewManager.ACTIVE_PANE,
             result = new $.Deferred();
         _doOpenWithOptionalPath(fileInfo.path, silent, paneId, commandData && commandData.options)
-            .done(function (file) {
+            .done(function(file) {
                 HealthLogger.fileOpened(file._path, false, file._encoding);
                 if (!commandData || !commandData.options || !commandData.options.noPaneActivate) {
                     MainViewManager.setActivePaneId(paneId);
@@ -495,18 +495,18 @@ define(function (require, exports, module) {
 
                 // If a line and column number were given, position the editor accordingly.
                 if (fileInfo.line !== null) {
-                        if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                            fileInfo.column = 1;
-                        }
-                    
-                        // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
-                        EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                                                                        fileInfo.column - 1,
-                                                                        true);
+                    if (fileInfo.column === null || (fileInfo.column <= 0)) {
+                        fileInfo.column = 1;
                     }
-                    result.resolve(file); 
+
+                    // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
+                    EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
+                        fileInfo.column - 1,
+                        true);
+                }
+                result.resolve(file);
             })
-            .fail(function () {
+            .fail(function() {
                 result.reject();
             });
 
@@ -523,7 +523,7 @@ define(function (require, exports, module) {
         // from command line: open -a ...../Brackets.app path          - where 'path' is undecorated
         // do "View Source" from Adobe Scout version 1.2 or newer (this will use decorated paths of the form "path:line:column")
     }
-    
+
     /**
      * Opens the given file, makes it the current file, does NOT add it to the workingset
      * @param {FileCommandData} commandData
