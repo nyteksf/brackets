@@ -30,7 +30,6 @@
         "ws": "~0.4.31"
     },
     "devDependencies": {
-        "bluebird": "^3.5.1",
         "glob": "7.1.1",
         "grunt": "0.4.5",
         "grunt-cleanempty": "1.0.3",
@@ -66,7 +65,7 @@
         "prepush": "npm run eslint",
         "postinstall": "grunt install",
         "test": "grunt test cla-check-pull",
-        "eslint": "grunt"
+        "eslint": "grunt eslint"
     },
     "licenses": [
         {
