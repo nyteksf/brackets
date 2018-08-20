@@ -1056,30 +1056,30 @@ define(function (require, exports, module) {
             activeDoc = activeEditor && activeEditor.document,
             doc = (commandData && commandData.doc) || activeDoc,
             settings;
-    
-        if (doc && !doc.isSaving) {
-			if (hotClose) {
-				// First save file, then wipe any associated history data
-				return doSave(doc)
-					.done(function () {
-						setTimeout(function () {
-							Db.delRows(doc.file._path);
-						}, 2000);
-					});
-			} else {
-				if (doc.isUntitled()) {
-                	if (doc === activeDoc) {
-                    	settings = {
-                        	selections: activeEditor.getSelections(),
-                        	scrollPos: activeEditor.getScrollPos()
-                    	};
-                	}
 
-                	return _doSaveAs(doc, settings);
-				} else {
-					return doSave(doc);
-				}
-			}
+        if (doc && !doc.isSaving) {
+            if (hotClose) {
+                // First save file, then wipe any associated history data
+                return doSave(doc)
+                    .done(function() {
+                        setTimeout(function() {
+                            Db.delRows(doc.file._path);
+                        }, 2000);
+                    });
+            } else {
+                if (doc.isUntitled()) {
+                    if (doc === activeDoc) {
+                        settings = {
+                            selections: activeEditor.getSelections(),
+                            scrollPos: activeEditor.getScrollPos()
+                        };
+                    }
+
+                    return _doSaveAs(doc, settings);
+                } else {
+                    return doSave(doc);
+                }
+            }
         }
 
         return $.Deferred().reject().promise();
