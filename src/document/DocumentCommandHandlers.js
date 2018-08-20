@@ -506,8 +506,8 @@ define(function (require, exports, module) {
                 }
                 result.resolve(file);
             })
-            .fail(function() {
-                result.reject();
+            .fail(function(err) {
+                result.reject(err);
             });
 
         return result;
@@ -546,8 +546,8 @@ define(function (require, exports, module) {
                 
 				result.resolve(doc);
             })
-            .fail(function () {
-                result.reject();
+            .fail(function (err) {
+                result.reject(err);
             });
         
         return result.promise();
