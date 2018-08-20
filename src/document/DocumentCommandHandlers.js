@@ -21,7 +21,7 @@
  *
  */
 
-/* jslint regexp: true */
+/*jslint regexp: true */
 
 define(function (require, exports, module) {
     "use strict";
@@ -397,7 +397,7 @@ define(function (require, exports, module) {
             // Create placeholder deferred
             result = new $.Deferred();
 
-            // first time through, default to the current project path
+            //first time through, default to the current project path
             if (!_defaultOpenDialogFullPath) {
                 _defaultOpenDialogFullPath = ProjectManager.getProjectRoot().fullPath;
             }
