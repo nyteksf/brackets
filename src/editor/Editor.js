@@ -114,7 +114,7 @@ define(function(require, exports, module) {
         AUTO_HIDE_SEARCH = "autoHideSearch",
         INDENT_LINE_COMMENT = "indentLineComment",
         INDENT_LINE_COMMENT = "indentLineComment",
-        INPUT_STYLE = "inputStyle";
+        INPUT_STYLE         = "inputStyle";
 
 
     /**
@@ -3015,5 +3015,5 @@ define(function(require, exports, module) {
     // Define public API
     exports.Editor = Editor;
     exports.BOUNDARY_CHECK_NORMAL = BOUNDARY_CHECK_NORMAL;
-    exports.BOUNDARY_IGNORE_TOP = BOUNDARY_IGNORE_TOP;
+    exports.BOUNDARY_IGNORE_TOP   = BOUNDARY_IGNORE_TOP;
 });
