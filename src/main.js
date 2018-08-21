@@ -65,7 +65,6 @@ if (window.location.search.indexOf("testEnvironment") > -1) {
     });
 }
 
-
 define(function (require) {
     "use strict";
 
