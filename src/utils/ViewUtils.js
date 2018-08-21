@@ -507,7 +507,7 @@ define(function (require, exports, module) {
             $(element).removeClass("force-right-zero");
         });
     }
-    
+
     // handle all resize handlers in a single listener
     $(window).resize(_handleResize);
 
