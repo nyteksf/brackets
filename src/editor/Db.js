@@ -111,7 +111,7 @@ define(function (require, exports, module) {
     function debouncedSync(doc, delay) {
         var result = new $.Deferred();
         try {
-            
+
             return function () {
                 clearTimeout(timer);
                 timer = setTimeout(function () {
@@ -123,9 +123,9 @@ define(function (require, exports, module) {
             console.log(error);
             result.reject();
         }
-        
+
         return result.promise();
-    };
+    }
 
     // Creates a table in current db
     function createTable (table, keyName) {
@@ -353,7 +353,7 @@ define(function (require, exports, module) {
             cursorPos = that._masterEditor.getCursorPos(),
             scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
-        
+
         try {
             sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
 				.done(function () {
@@ -366,10 +366,10 @@ define(function (require, exports, module) {
                                 // Remove doc change history data
                                 delRows(fullPathToFile);
                             }
-                    
+                        
                             result.resolve();
                         });
-            });
+                });
         } catch (error) {
             console.log(error);
             result.reject();
@@ -382,7 +382,8 @@ define(function (require, exports, module) {
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
     exports.sendChangeHistory = sendChangeHistory;
     exports.delRows = delRows;
-    exports.debouncedSync = debouncedSync;exports.printSavedContents = printSavedContents; 
+    exports.debouncedSync = debouncedSync;
+    exports.printSavedContents = printSavedContents; 
     exports.sendDocText = sendDocText;
     exports.wipeAll = wipeAll;
 });
