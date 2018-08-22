@@ -64,13 +64,13 @@
 define(function (require, exports, module) {
     'use strict';
 
-    var Editor = require("editor/Editor"),
+    var Editor             = require("editor/Editor"),
         PreferencesManager = require("preferences/PreferencesManager"),
-        Strings = require("strings"),
-        DocumentManager = require("document/DocumentManager"),
-        CompressionUtils = require("thirdparty/rawdeflate"),
-        CompressionUtils = require("thirdparty/rawinflate"),
-        He = require("thirdparty/he");
+        Strings            = require("strings"),
+        DocumentManager    = require("document/DocumentManager"),
+        CompressionUtils   = require("thirdparty/rawdeflate"),
+        CompressionUtils   = require("thirdparty/rawinflate"),
+        He                 = require("thirdparty/he");
 
     // Config settings
     var DB_NAME    = 'change_history_db',
@@ -79,9 +79,9 @@ define(function (require, exports, module) {
         DB_SIZE_MB = 500;
 
     var database   = window.openDatabase(DB_NAME,
-                                    DB_VERSION,
-                                    DB_DESC,
-                                    DB_SIZE_MB * 1024 * 1024);
+                                         DB_VERSION,
+                                         DB_DESC,
+                                         DB_SIZE_MB * 1024 * 1024);
 
     // Static db references
     var tables = [
