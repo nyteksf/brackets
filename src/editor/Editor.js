@@ -497,7 +497,8 @@ define(function (require, exports, module) {
         
         if (hotClose) {  // Load docTxt from DB here if possible
             Db.database.transaction(function (tx, self) {
-                tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?', [document.file._path],
+                tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?',
+                [document.file._path],
                 function (tx, results) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
@@ -520,7 +521,8 @@ define(function (require, exports, module) {
             this._updateHiddenLines();
             if (hotClose) {  // Load last cursorPos from DB
                 Db.database.transaction(function(tx) {
-                    tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?', [document.file._path],
+                    tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',
+                    [document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             var cursorPosLn = JSON.stringify(results.rows[0].int__CursorPos.line),
@@ -1164,16 +1166,16 @@ define(function (require, exports, module) {
      * @param {!string} text
      */
     Editor.prototype._resetText = function (text, that) {
-        var currentText = that._codeMirror.getValue(); 
-        
+        var currentText = that._codeMirror.getValue();
+
         // compare with ignoring line-endings, issue #11826
         var textLF = text ? text.replace(/(\r\n|\r|\n)/g, "\n") : null;
         var currentTextLF = currentText ? currentText.replace(/(\r\n|\r|\n)/g, "\n") : null;
         if (textLF === currentTextLF) {
-            // there's nothing to reset                
+            // there's nothing to reset
             return;
         }
-        
+
         var perfTimerName = PerfUtils.markStart("Editor._resetText()\t" + (!that.document || that.document.file.fullPath));
 
         var cursorPos = that.getCursorPos(),
@@ -1182,14 +1184,15 @@ define(function (require, exports, module) {
         // This *will* fire a change event, but we clear the undo immediately afterward
         that._codeMirror.setValue(text);
         that._codeMirror.refresh();
-        
+
         // Make sure we can't undo back to the empty state before setValue()
         that._codeMirror.clearHistory();
 
         if (hotClose) {  // Attempt to load any unsaved changes
             Db.database.transaction(function (tx) {
                 // Restore saved undo/redo history from DB
-                tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',           [that.document.file._path],
+                tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',
+                    [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             var docHistory = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows["0"].str__DocHistory)));
@@ -1204,7 +1207,8 @@ define(function (require, exports, module) {
                     }
                 );
                 
-                tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',           [that.document.file._path],
+                tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',
+                    [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
@@ -1219,7 +1223,8 @@ define(function (require, exports, module) {
                     }
                 );
                 
-                tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',           [that.document.file._path],
+                tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',
+		            [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
