@@ -153,8 +153,8 @@ define(function (require, exports, module) {
      * Event triggered when File Save is cancelled, when prompted to save dirty files
      */
     var APP_QUIT_CANCELLED = "appQuitCancelled";
-
     
+
     /**
      * JSLint workaround for circular dependency
      * @type {function}
@@ -813,7 +813,7 @@ define(function (require, exports, module) {
             if (hotClose) {
                 Db.delRows(file._path);
             }
-            
+
             if (docToSave.keepChangesTime) {
                 // The user has decided to keep conflicting changes in the editor. Check to make sure
                 // the file hasn't changed since they last decided to do that.
@@ -872,7 +872,7 @@ define(function (require, exports, module) {
 
         return result.promise();
     }
-    
+
     /**
      * Dispatches the app quit cancelled event
      */
@@ -1057,28 +1057,28 @@ define(function (require, exports, module) {
             settings;
 
         if (doc && !doc.isSaving) {
-			if (hotClose) {
-			    // First save file, then wipe any associated history data
-				return doSave(doc)
-					.done(function () {
-						setTimeout(function () {
-							Db.delRows(doc.file._path);
-						}, 2000);
-					});
-			} else {
-				if (doc.isUntitled()) {
-                	if (doc === activeDoc) {
-                    	settings = {
-                        	selections: activeEditor.getSelections(),
-                        	scrollPos: activeEditor.getScrollPos()
-                    	};
-                	}
-
+            if (hotClose) {
+                // First save file, then wipe any associated history data
+                return doSave(doc)
+                    .done(function () {
+                        setTimeout(function () {
+                            Db.delRows(doc.file._path);
+                        }, 2000);
+                });
+            } else {
+                if (doc.isUntitled()) {
+                    if (doc === activeDoc) {
+                        settings = {
+                            selections: activeEditor.getSelections(),
+                            scrollPos: activeEditor.getScrollPos()
+                        };
+                    }
+                    
                 	return _doSaveAs(doc, settings);
-				} else {
-					return doSave(doc);
-				}
-			}
+                } else {
+                    return doSave(doc);
+                }
+            }
         }
 
         return $.Deferred().reject().promise();
@@ -1231,36 +1231,36 @@ define(function (require, exports, module) {
 
         if (doc && doc.isDirty && !_forceClose && (MainViewManager.isExclusiveToPane(doc.file, paneId) || _spawnedRequest)) {
             if (hotClose) {
-				doClose(file);
-			} else {
+                doClose(file);
+            } else {
 				// Document is dirty: prompt to save changes before closing if only the document is exclusively
 				// listed in the requested pane or this is part of a list close request
-				var filename = FileUtils.getBaseName(doc.file.fullPath);
-
-				Dialogs.showModalDialog(
+                var filename = FileUtils.getBaseName(doc.file.fullPath);
+                
+                Dialogs.showModalDialog(
 					DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
 					Strings.SAVE_CLOSE_TITLE,
 					StringUtils.format(
 						Strings.SAVE_CLOSE_MESSAGE,
 						StringUtils.breakableUrl(filename)
 					),
-					[
-						{
-							className : Dialogs.DIALOG_BTN_CLASS_LEFT,
-							id        : Dialogs.DIALOG_BTN_DONTSAVE,
-							text      : Strings.DONT_SAVE
-						},
-						{
-							className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-							id        : Dialogs.DIALOG_BTN_CANCEL,
-							text      : Strings.CANCEL
-						},
-						{
-							className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-							id        : Dialogs.DIALOG_BTN_OK,
-							text      : Strings.SAVE
-						}
-					]
+                    [
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+                            id        : Dialogs.DIALOG_BTN_DONTSAVE,
+                            text      : Strings.DONT_SAVE
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                            id        : Dialogs.DIALOG_BTN_CANCEL,
+                            text      : Strings.CANCEL
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                            id        : Dialogs.DIALOG_BTN_OK,
+                            text      : Strings.SAVE
+                        }
+                    ]
 				)
                 .done(function (id) {
                     if (id === Dialogs.DIALOG_BTN_CANCEL) {
@@ -1298,7 +1298,7 @@ define(function (require, exports, module) {
                         }
                     }
                 });
-			}
+            }
             result.always(function () {
                 MainViewManager.focusActivePane();
             });
@@ -1322,76 +1322,75 @@ define(function (require, exports, module) {
             unsavedDocs = [];
 
         if (hotClose) {
-	       result.resolve();
+            result.resolve();
         } else {
             list.forEach(function (file) {
-            var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
-            if (doc && doc.isDirty) {
-                unsavedDocs.push(doc);
-            }
-        });
-
-        if (unsavedDocs.length === 0 || _forceClose) {
-            // No unsaved changes or we want to ignore them, so we can proceed without a prompt
-            result.resolve();
-
-        } else if (unsavedDocs.length === 1) {
-            // Only one unsaved file: show the usual single-file-close confirmation UI
-            var fileCloseArgs = { file: unsavedDocs[0].file, promptOnly: promptOnly, spawnedRequest: true };
-
-            handleFileClose(fileCloseArgs).done(function () {
-                // still need to close any other, non-unsaved documents
-                result.resolve();
-            }).fail(function () {
-                result.reject();
+                var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
+                if (doc && doc.isDirty) {
+                    unsavedDocs.push(doc);
+                }
             });
+            
+            if (unsavedDocs.length === 0 || _forceClose) {
+                // No unsaved changes or we want to ignore them, so we can proceed without a prompt
+                result.resolve();
 
-        } else {
-            // Multiple unsaved files: show a single bulk prompt listing all files
-            var message = Strings.SAVE_CLOSE_MULTI_MESSAGE + FileUtils.makeDialogFileList(_.map(unsavedDocs, _shortTitleForDocument));
+            } else if (unsavedDocs.length === 1) {
+                // Only one unsaved file: show the usual single-file-close confirmation UI
+                var fileCloseArgs = { file: unsavedDocs[0].file, promptOnly: promptOnly, spawnedRequest: true };
 
-            Dialogs.showModalDialog(
-                DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
-                Strings.SAVE_CLOSE_TITLE,
-                message,
-                [
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_LEFT,
-                        id        : Dialogs.DIALOG_BTN_DONTSAVE,
-                        text      : Strings.DONT_SAVE
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
-                        id        : Dialogs.DIALOG_BTN_CANCEL,
-                        text      : Strings.CANCEL
-                    },
-                    {
-                        className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
-                        id        : Dialogs.DIALOG_BTN_OK,
-                        text      : Strings.SAVE
-                    }
-                ]
-            )
-                .done(function (id) {
-                    if (id === Dialogs.DIALOG_BTN_CANCEL) {
-                        dispatchAppQuitCancelledEvent();
-                        result.reject();
-                    } else if (id === Dialogs.DIALOG_BTN_OK) {
-                        // Save all unsaved files, then if that succeeds, close all
-                        _saveFileList(list).done(function (listAfterSave) {
-                            // List of files after save may be different, if any were Untitled
-                            result.resolve(listAfterSave);
-                        }).fail(function () {
-                            result.reject();
-                        });
-                    } else {
-                        // "Don't Save" case--we can just go ahead and close all files.
-                        result.resolve();
-                    }
+                handleFileClose(fileCloseArgs).done(function () {
+                    // still need to close any other, non-unsaved documents
+                    result.resolve();
+                }).fail(function () {
+                    result.reject();
                 });
+            } else {
+                // Multiple unsaved files: show a single bulk prompt listing all files
+                var message = Strings.SAVE_CLOSE_MULTI_MESSAGE + FileUtils.makeDialogFileList(_.map(unsavedDocs, _shortTitleForDocument));
+
+                Dialogs.showModalDialog(
+                    DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
+                    Strings.SAVE_CLOSE_TITLE,
+                    message,
+                    [
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_LEFT,
+                            id        : Dialogs.DIALOG_BTN_DONTSAVE,
+                            text      : Strings.DONT_SAVE
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_NORMAL,
+                            id        : Dialogs.DIALOG_BTN_CANCEL,
+                            text      : Strings.CANCEL
+                        },
+                        {
+                            className : Dialogs.DIALOG_BTN_CLASS_PRIMARY,
+                            id        : Dialogs.DIALOG_BTN_OK,
+                            text      : Strings.SAVE
+                        }
+                    ]
+                )
+                    .done(function (id) {
+                        if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                            dispatchAppQuitCancelledEvent();
+                            result.reject();
+                        } else if (id === Dialogs.DIALOG_BTN_OK) {
+                            // Save all unsaved files, then if that succeeds, close all
+                            _saveFileList(list).done(function (listAfterSave) {
+                                // List of files after save may be different, if any were Untitled
+                                result.resolve(listAfterSave);
+                            }).fail(function () {
+                                result.reject();
+                            });
+                        } else {
+                            // "Don't Save" case--we can just go ahead and close all files.
+                            result.resolve();
+                        }
+                    });
             }
         }
-
+        
         // If all the unsaved-changes confirmations pan out above, then go ahead & close all editors
         // NOTE: this still happens before any done() handlers added by our caller, because jQ
         // guarantees that handlers run in the order they are added.
@@ -1518,15 +1517,15 @@ define(function (require, exports, module) {
             var fileName = MainViewManager.getCurrentlyViewedFile();
             Db.delRows(fileName._path);
         }
-        
+
         // Prefer selected sidebar item (which could be a folder)
         var entry = ProjectManager.getContext();
-        
+
         if (!entry) {
             // Else use current file (not selected in ProjectManager if not visible in tree or workingset)
             entry = MainViewManager.getCurrentlyViewedFile();
         }
-    
+
         if (entry) {
             ProjectManager.renameItemInline(entry);
         }
@@ -1646,7 +1645,7 @@ define(function (require, exports, module) {
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
                     // Wipe away any saved doc change data
-					if (hotClose) {
+                    if (hotClose) {
                         Db.delRows(thisFilePath);
                     }
                     ProjectManager.deleteItem(entry);
