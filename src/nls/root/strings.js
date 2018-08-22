@@ -137,6 +137,7 @@ define({
     "SAVE_CLOSE_MESSAGE"                : "Do you want to save the changes you made in the document <span class='dialog-filename'>{0}</span>?",
     "SAVE_CLOSE_MULTI_MESSAGE"          : "Do you want to save your changes to the following files?",
     "HOT_CLOSE_TITLE"                   : "Hot Close",
+    "HOT_CLOSE_DB_ERROR"                : "Database error! Cannot update! No database loaded! Please reload Brackets and try again.",
     "EXT_MODIFIED_TITLE"                : "External Changes",
     "CONFIRM_DELETE_TITLE"              : "Confirm Delete",
     "CONFIRM_FILE_DELETE"               : "Are you sure you want to delete the file <span class='dialog-filename'>{0}</span>?",

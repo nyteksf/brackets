@@ -346,7 +346,7 @@ define(function (require, exports, module) {
         values.push(encodedHistoryObjStr);
 
         if (!database) {
-            var errorMsg = "Database error! No database loaded!";
+            var errorMsg = Strings.HOT_CLOSE_DB_ERROR;
             handleErrorDialog(errorMsg);
         } else {
             try {
@@ -371,12 +371,12 @@ define(function (require, exports, module) {
     // Copies currently closing documents text, history, etc. to db
     function captureUnsavedDocChanges(that) {
         // Extract latest change history data
-        var curHistoryObj = that._masterEditor._codeMirror.getHistory(),
-            curDocText = that._masterEditor._codeMirror.getValue(),
+        var curHistoryObj  = that._masterEditor._codeMirror.getHistory(),
+            curDocText     = that._masterEditor._codeMirror.getValue(),
             fullPathToFile = that.file._path,
-            cursorPos = that._masterEditor.getCursorPos(),
-            scrollPos = that._masterEditor.getScrollPos(),
-            result = new $.Deferred();
+            cursorPos      = that._masterEditor.getCursorPos(),
+            scrollPos      = that._masterEditor.getScrollPos(),
+            result         = new $.Deferred();
         try {
             sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
 				.done(function () {
