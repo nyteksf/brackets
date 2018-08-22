@@ -383,7 +383,7 @@ define(function (require, exports, module) {
     exports.sendChangeHistory = sendChangeHistory;
     exports.delRows = delRows;
     exports.debouncedSync = debouncedSync;
-    exports.printSavedContents = printSavedContents; 
+    exports.printSavedContents = printSavedContents;
     exports.sendDocText = sendDocText;
     exports.wipeAll = wipeAll;
 });
