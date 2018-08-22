@@ -66,9 +66,9 @@ define(function (require, exports, module) {
 
     var Editor = require("editor/Editor"),
         PreferencesManager = require("preferences/PreferencesManager"),
-    	Strings = require("strings"),
+        Strings = require("strings"),
         DocumentManager = require("document/DocumentManager"),
-    	CompressionUtils = require("thirdparty/rawdeflate"),
+        CompressionUtils = require("thirdparty/rawdeflate"),
         CompressionUtils = require("thirdparty/rawinflate"),
         He = require("thirdparty/he");
 
@@ -105,26 +105,26 @@ define(function (require, exports, module) {
     });
 
     var hotClose = PreferencesManager.get(HOT_CLOSE);
-    
+
     // Debounce syncing of new unsaved changes to db
     var timer = null;
     function debouncedSync(doc, delay) {
-		var result = new $.Deferred();
-		try {
-
-			return function () {
-				clearTimeout(timer);
-				timer = setTimeout(function () {
-					captureUnsavedDocChanges(doc);
-				}, delay || 1250);
-				result.resolve();
-			};
-		} catch (error) {
-			console.log(error);
-			result.reject();
-		}
-
-		return result.promise();
+        var result = new $.Deferred();
+        try {
+            
+            return function () {
+                clearTimeout(timer);
+                timer = setTimeout(function () {
+                    captureUnsavedDocChanges(doc);
+                }, delay || 1250);
+                result.resolve();
+            };
+        } catch (error) {
+            console.log(error);
+            result.reject();
+        }
+        
+        return result.promise();
     };
 
     // Creates a table in current db
@@ -170,8 +170,9 @@ define(function (require, exports, module) {
 
     // Select and display db contents from all tables by sessionId
     function printSavedContents(filePath) {
+        var i;
         try {
-            for (var i = 0, len = tables.length; i < len; i++) {
+            for (i = 0, len = tables.length; i < len; i++) {
                 printRowContentsDb(tables[i], filePath, keyNames[i]);
             }
         } catch (error) {
@@ -181,41 +182,42 @@ define(function (require, exports, module) {
 
     // Delete individual row from db
     function delTableRowDb(table, filePath) {
-		var result = new $.Deferred();
+        var result = new $.Deferred();
         database.transaction(function (tx) {
-            tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"', [],
-            function (tx, txResults) {
-				result.resolve();
-			},
-            function (tx, error) {
-                console.log(error);
-				result.reject();
-            });
+            tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"',
+                [],
+                function (tx, txResults) {
+                    result.resolve();
+                }, function (tx, error) {
+                    console.log(error);
+                    result.reject();
+                }
+            );
         });
     }
 
     // Select and remove specific rows from db by sessionId
     function delRows(filePath, limitReached) {
-        var table,
+        var i,
+            table,
             result = new $.Deferred();
-
-		try {
-			if (limitReached) {
+        try {
+            if (limitReached) {
                 // Slash and burn all data in db
                 filePath = '*';
             }
 
-            for (var i = 0; i < tables.length; i++) {
+            for (i = 0; i < tables.length; i++) {
                 table = tables[i];
                 delTableRowDb(table, filePath);
             }
             result.resolve();
         } catch (error) {
             console.log(error);
-			result.reject();
+            result.reject();
         }
-
-		return result.promise();
+        
+        return result.promise();
     }
 
     // Drops a single table from db
@@ -231,8 +233,9 @@ define(function (require, exports, module) {
 
     // Allow user ability to clear db of accumulated change history
     function wipeAll() {
+        var i;
         try {
-            for (var i = 0, len = tables.length; i < len; i++) {
+            for (i = 0, len = tables.length; i < len; i++) {
                 var table = tables[i];
                 delTableDb(table);
             }
@@ -241,10 +244,10 @@ define(function (require, exports, module) {
             console.log(error);
         }
     }
-
-    // Updates specific row in a table in db    
+    
+    // Updates specific row in a table in db
     function updateTableRowDb(filePath, table, value, keyName) {
-		var result = new $.Deferred();
+        var result = new $.Deferred();
 
         if (typeof value === "object") {
             value = JSON.stringify(value);
@@ -252,85 +255,85 @@ define(function (require, exports, module) {
 
         database.transaction(function (tx) {
             value = value.toString();
-            tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
-            function (tx, results) {
-				result.resolve();
-            },
-            function (tx, error) {
-                // Error code #4 indicates storage capacity reached for currently used table 
-                // Make some room for new data, then try again when done
-                if (error.code === 4) {
-                    delRows(null, true)
-						.done(function () {
-							tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)', [value],
-								function (tx, result) {
-									result.resolve();
-								},
-								function (tx, error) {
-									result.reject();
-								}
-							);
-						});
+            tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)',
+                [value],
+                function (tx, results) {
+                    result.resolve();
+                }, function (tx, error) {
+                    // Error code #4 indicates storage capacity reached for currently used table 
+                    // Make some room for new data, then try again when done
+                    if (error.code === 4) {
+                        delRows(null, true)
+                            .done(function () {
+                                 tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)',
+                                    [value],
+                                    function (tx, result) {
+                                        result.resolve();
+                                    }, function (tx, error) {
+                                        result.reject();
+                                    }
+                                 );
+                            });
                 // Error code #6, due to SQL constraints, indicates an entry already exists in a given row
                 // Overwrite the row via Update
                 } else if (error.code === 6) {
-                    tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"', [value],
-                    function (tx, results) {
-						result.resolve();
-                    },
-                    function (tx, error) {
-						result.reject();
-                    });
+                    tx.executeSql('UPDATE ' + table + ' SET ' + keyName + '=? WHERE sessionId="' + filePath + '"',
+                        [value],
+                        function (tx, results) {
+                            result.resolve();
+                        },
+                        function (tx, error) {
+                            result.reject();
+                        });
                 } else { console.log(error); }
             });
         });
-		
-		return result.promise();
-	}
+        
+        return result.promise();
+    }
 
 	// Send/update changes to document text in db
     function sendDocText (docTextToSync, filePath) {
         var compressedDocText = window.RawDeflate.deflate(He.encode(docTextToSync.toString())),
-			result = new $.Deferred();
-		
-		try {
-			updateTableRowDb(filePath, "unsaved_doc_changes", compressedDocText, "str__DocTxt")
+            result = new $.Deferred();		
+        try {
+            updateTableRowDb(filePath, "unsaved_doc_changes", compressedDocText, "str__DocTxt")
 				.done(function () {
-					result.resolve();
-				});
-		} catch  (error) {
-			console.log(error);
-			result.reject();
-		}
-		
-		return result.promise();
+                    result.resolve();
+            });
+        } catch  (error) {
+            console.log(error);
+            result.reject();
+        }
+        
+        return result.promise();
     };
     
     // Send/update changes in doc related metadata in db  
     var sendChangeHistory = function(cursorPos, scrollPos, historyObjStr, fullFilePath) {
-		var values = [],
-			encodedHistoryObjStr = window.RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
-			encodedCursorPos = window.RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
+        var i,
+            values = [],
+            encodedHistoryObjStr = window.RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
+            encodedCursorPos = window.RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
             encodedScrollPos = window.RawDeflate.deflate(He.encode(JSON.stringify(scrollPos))),
             result = new $.Deferred();
-      
+
         values.push(encodedCursorPos);
         values.push(encodedScrollPos);
         values.push(encodedHistoryObjStr);
-        
+
         if (!database) {
             console.log("Database error! No database loaded!");
         } else {
             try {
-                
-				for (var i = 0; i < 3; i++) {
+                for (i = 0; i < 3; i++) {
                     updateTableRowDb(fullFilePath, tables[i], values[i], keyNames[i]);
 
                     // Data transmission done
-					if (i === 2) {
-						result.resolve();
-					}
-				}
+                    if (i === 2) {
+                        result.resolve();
+                    }
+                }
             } catch (error) {
                 console.log("Database error: ", error);
                 result.reject();
@@ -344,17 +347,17 @@ define(function (require, exports, module) {
     // Copies currently closing documents text, history, etc. to db
     function captureUnsavedDocChanges(that) {
         // Extract latest change history data
-		var curHistoryObj = that._masterEditor._codeMirror.getHistory(),
-			curDocText = that._masterEditor._codeMirror.getValue(),
+        var curHistoryObj = that._masterEditor._codeMirror.getHistory(),
+            curDocText = that._masterEditor._codeMirror.getValue(),
             fullPathToFile = that.file._path,
             cursorPos = that._masterEditor.getCursorPos(),
             scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
-		
+        
         try {
-			sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
+            sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
 				.done(function () {
-					sendDocText(curDocText, fullPathToFile)
+                    sendDocText(curDocText, fullPathToFile)
 						.done(function () {
                             // Undo latest push to db:
                             // Document was just undone back to clean state
@@ -363,10 +366,10 @@ define(function (require, exports, module) {
                                 // Remove doc change history data
                                 delRows(fullPathToFile);
                             }
-                            
+                    
                             result.resolve();
-						});
-				});
+                        });
+            });
         } catch (error) {
             console.log(error);
             result.reject();
@@ -379,8 +382,7 @@ define(function (require, exports, module) {
     exports.captureUnsavedDocChanges = captureUnsavedDocChanges;
     exports.sendChangeHistory = sendChangeHistory;
     exports.delRows = delRows;
-    exports.debouncedSync = debouncedSync;
-    exports.printSavedContents = printSavedContents; 
+    exports.debouncedSync = debouncedSync;exports.printSavedContents = printSavedContents; 
     exports.sendDocText = sendDocText;
     exports.wipeAll = wipeAll;
 });
