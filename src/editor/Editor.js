@@ -246,7 +246,7 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference(WORD_WRAP,          "boolean", true, {
         description: Strings.DESCRIPTION_WORD_WRAP
     });
-  
+
     PreferencesManager.definePreference(AUTO_HIDE_SEARCH,   "boolean", true, {
         description: Strings.DESCRIPTION_SEARCH_AUTOHIDE
     });
@@ -491,10 +491,10 @@ define(function (require, exports, module) {
         // Initially populate with text. This will send a spurious change event, so need to make
         // sure this is understood as a 'sync from document' case, not a genuine edit
         this._duringSync = true;
-        
+
         var that = this,
             docText = document.getText();
-        
+
         if (hotClose) {  // Load docTxt from DB here if possible
             Db.database.transaction(function (tx, self) {
                 tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?',
@@ -503,7 +503,7 @@ define(function (require, exports, module) {
                     if (results.rows.length > 0) {
                         var savedDocTxt = results.rows[0].str__DocTxt,
                             savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
-                    
+
                         that._resetText(savedDocTextDecoded, that);
                     } else {  // Use cur doc text if no unsaved changes were found in DB
                         that._resetText(docText, that);
@@ -514,7 +514,7 @@ define(function (require, exports, module) {
         } else {  // !hotClose
             this._resetText(document.getText(), this);
         }
-        
+
         this._duringSync = false;
 
         if (range) {
@@ -528,7 +528,7 @@ define(function (require, exports, module) {
                             var cursorPosLn = JSON.stringify(results.rows[0].int__CursorPos.line),
                                 cursorPosCh =
                             JSON.stringify(results.rows[0].int__CursorPos.ch);
-                            
+
                             that.setCursorPos(cursorPosLn, cursorPosCh, true);
                         } else {  // Use default functionality instead
                             that.setCursorPos(range.startLine, 0);
@@ -963,7 +963,7 @@ define(function (require, exports, module) {
         // The update above may have inserted new lines - must hide any that fall outside our range
         this._updateHiddenLines();
     };
-    
+
     /**
      * Gets short title of current document for display usage
      */
@@ -1088,13 +1088,13 @@ define(function (require, exports, module) {
         this._codeMirror.on("keyup", function () {
             var openFilePath  = MainViewManager.getCurrentlyViewedPath('first-pane');
             var docToSync = DocumentManager.getOpenDocumentForPath(openFilePath);
-            
+
             // Ensure doc backed with master editor
             docToSync._ensureMasterEditor();
-            
+
             // Stash a copy of current document text, history, cursorPos, & etc. in localStorage
             var syncChangesToDb = Db.debouncedSync(docToSync);
-			syncChangesToDb();
+            syncChangesToDb();
         });
 
         // FUTURE: if this list grows longer, consider making this a more generic mapping
@@ -1129,7 +1129,7 @@ define(function (require, exports, module) {
         this._codeMirror.on("focus", function () {
             self._focused = true;
             self.trigger("focus", self);
-            
+
         });
 
         this._codeMirror.on("blur", function () {
@@ -1196,49 +1196,49 @@ define(function (require, exports, module) {
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             var docHistory = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows["0"].str__DocHistory)));
-                            
+
                             that._codeMirror.setHistory(docHistory);
                         } else {
                             // Mark the document clean.
                             that._codeMirror.markClean();
-                        } 
-                    }, function (tx, error) {
+                        }
+                }, function (tx, error) {
                         console.log(error);
                     }
                 );
-                
+
                 tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',
                     [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
                             var savedCursorPos = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0].int__CursorPos)));
-                            
+
                             that.setCursorPos(savedCursorPos);
                         } else {
                             that.setCursorPos(cursorPos);
-                        } 
+                        }
                     }, function (tx, error) {
                         console.log(error);
                     }
                 );
-                
+
                 tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',
-		            [that.document.file._path],
+                    [that.document.file._path],
                     function(tx, results) {
                         if (results.rows.length > 0) {
                             // Restore cursor position from DB if possible
                             var savedScrollPos = JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0].int__ScrollPos)));
-                            
+
                             that.setScrollPos(savedScrollPos.x, savedScrollPos.y);
                         } else {
                             that.setScrollPos(scrollPos.x, scrollPos.y);
-                            
+
                             // No changes to doc, so mark as clean by forcing save
                             var docToSave = DocumentManager.getOpenDocumentForPath(that.document.file._path);
                             DocumentCommandHandlers.doSave(docToSave, true);
                             Db.delRows(that.document.file._path);
-                        } 
+                        }
                     }, function (tx, error) {
                         console.log(error);
                     }
@@ -1250,7 +1250,7 @@ define(function (require, exports, module) {
 
             // Restore cursor and scroll positions
             that.setCursorPos(cursorPos);
-            that.setScrollPos(scrollPos.x, scrollPos.y);            
+            that.setScrollPos(scrollPos.x, scrollPos.y);
         }
 
         PerfUtils.addMeasurement(perfTimerName);
@@ -2378,7 +2378,7 @@ define(function (require, exports, module) {
             if (outerMode.name === 'htmlmixed' && primarySel.start.line === primarySel.end.line && primarySel.start.ch === primarySel.end.ch) {
                 var tagInfo = HTMLUtils.getTagInfo(this, primarySel.start, true),
                     tokenType = tagInfo.position.tokenType;
- 
+
                 if (tokenType === HTMLUtils.ATTR_VALUE && tagInfo.attr.name.toLowerCase() === 'style') {
                     return 'css';
                 }
@@ -2789,7 +2789,7 @@ define(function (require, exports, module) {
         var options = fullPath && {context: fullPath};
         return PreferencesManager.set(CLOSE_BRACKETS, value, options);
     };
-    
+
     /**
      * Gets whether the specified or current file uses auto close brackets
      * @param {string=} fullPath Path to file to get preference for
@@ -2911,10 +2911,10 @@ define(function (require, exports, module) {
             $holder.toggleClass("show-line-padding", Boolean(showLinePadding));
         });
     };
-    
+
     Editor.LINE_NUMBER_GUTTER_PRIORITY = LINE_NUMBER_GUTTER_PRIORITY;
     Editor.CODE_FOLDING_GUTTER_PRIORITY = CODE_FOLDING_GUTTER_PRIORITY;
-    
+
     // Set up listeners for preference changes
     editorOptions.forEach(function (prefName) {
         PreferencesManager.on("change", prefName, function () {
@@ -2929,4 +2929,3 @@ define(function (require, exports, module) {
     exports.BOUNDARY_CHECK_NORMAL   = BOUNDARY_CHECK_NORMAL;
     exports.BOUNDARY_IGNORE_TOP     = BOUNDARY_IGNORE_TOP;
 });
-//ORIGINAL//
