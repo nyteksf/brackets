@@ -1058,7 +1058,7 @@ define(function (require, exports, module) {
 
         if (doc && !doc.isSaving) {
 			if (hotClose) {
-				// First save file, then wipe any associated history data
+			    // First save file, then wipe any associated history data
 				return doSave(doc)
 					.done(function () {
 						setTimeout(function () {
