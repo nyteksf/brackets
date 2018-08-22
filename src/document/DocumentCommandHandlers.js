@@ -142,7 +142,7 @@ define(function (require, exports, module) {
         excludeFromHints: true
     });
     EventDispatcher.makeEventDispatcher(exports);
-    
+
     /**
      * Sync to db event triggered on file change when pref is set to 'true'
      */
@@ -359,7 +359,6 @@ define(function (require, exports, module) {
                     file._encoding = encoding[fullPath];
                 }
             }
-            
             MainViewManager._open(paneId, file, options)
                 .done(function () {
                     result.resolve(file);
@@ -472,7 +471,7 @@ define(function (require, exports, module) {
      * fullPath: is in the form "path[:lineNumber[:columnNumber]]"
      * lineNumber and columnNumber are 1-origin: lines and columns are 1-based
      */
-    
+
     /**
      * Opens the given file and makes it the current file. Does NOT add it to the workingset.
      * @param {FileCommandData=} commandData - record with the following properties:
@@ -486,8 +485,9 @@ define(function (require, exports, module) {
             silent = (commandData && commandData.silent) || false,
             paneId = (commandData && commandData.paneId) || MainViewManager.ACTIVE_PANE,
             result = new $.Deferred();
+
         _doOpenWithOptionalPath(fileInfo.path, silent, paneId, commandData && commandData.options)
-            .done(function(file) {
+            .done(function (file) {
                 HealthLogger.fileOpened(file._path, false, file._encoding);
                 if (!commandData || !commandData.options || !commandData.options.noPaneActivate) {
                     MainViewManager.setActivePaneId(paneId);
@@ -501,12 +501,13 @@ define(function (require, exports, module) {
 
                     // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
                     EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                        fileInfo.column - 1,
-                        true);
+                                                                      fileInfo.column - 1,
+                                                                      true);
                 }
+
                 result.resolve(file);
             })
-            .fail(function(err) {
+            .fail(function (err) {
                 result.reject(err);
             });
 
@@ -532,25 +533,23 @@ define(function (require, exports, module) {
      *   paneId: optional PaneId (defaults to active pane)
      * @return {$.Promise} a jQuery promise that will be resolved with @type {Document}
      */
-
     function handleDocumentOpen(commandData) {
         var result = new $.Deferred();
-        
         handleFileOpen(commandData)
             .done(function (file) {
-                //  if we succeeded with an open file
+                // if we succeeded with an open file
                 //  then we need to resolve that to a document.
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
                 var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
-                
-				result.resolve(doc);
+                result.resolve(doc);
             })
             .fail(function (err) {
                 result.reject(err);
             });
-        
+
         return result.promise();
+
     }
 
     /**
@@ -743,14 +742,10 @@ define(function (require, exports, module) {
      * @param {boolean=} force Ignore CONTENTS_MODIFIED errors from the FileSystem
      * @return {$.Promise} a promise that is resolved with the File of docToSave (to mirror
      *   the API of _doSaveAs()). Rejected in case of IO error (after error dialog dismissed).
-     */ 
+     */
     function doSave(docToSave, force) {
         var result = new $.Deferred(),
             file = docToSave.file;
-
-        if (hotClose) {
-            Db.delRows(file._path);
-        }
 
         function handleError(error) {
             _showSaveFileError(error, file.fullPath)
@@ -815,6 +810,10 @@ define(function (require, exports, module) {
         }
 
         if (docToSave.isDirty) {
+            if (hotClose) {
+                Db.delRows(file._path);
+            }
+            
             if (docToSave.keepChangesTime) {
                 // The user has decided to keep conflicting changes in the editor. Check to make sure
                 // the file hasn't changed since they last decided to do that.
@@ -1058,28 +1057,28 @@ define(function (require, exports, module) {
             settings;
 
         if (doc && !doc.isSaving) {
-            if (hotClose) {
-                // First save file, then wipe any associated history data
-                return doSave(doc)
-                    .done(function() {
-                        setTimeout(function() {
-                            Db.delRows(doc.file._path);
-                        }, 2000);
-                    });
-            } else {
-                if (doc.isUntitled()) {
-                    if (doc === activeDoc) {
-                        settings = {
-                            selections: activeEditor.getSelections(),
-                            scrollPos: activeEditor.getScrollPos()
-                        };
-                    }
+			if (hotClose) {
+				// First save file, then wipe any associated history data
+				return doSave(doc)
+					.done(function () {
+						setTimeout(function () {
+							Db.delRows(doc.file._path);
+						}, 2000);
+					});
+			} else {
+				if (doc.isUntitled()) {
+                	if (doc === activeDoc) {
+                    	settings = {
+                        	selections: activeEditor.getSelections(),
+                        	scrollPos: activeEditor.getScrollPos()
+                    	};
+                	}
 
-                    return _doSaveAs(doc, settings);
-                } else {
-                    return doSave(doc);
-                }
-            }
+                	return _doSaveAs(doc, settings);
+				} else {
+					return doSave(doc);
+				}
+			}
         }
 
         return $.Deferred().reject().promise();
@@ -1227,7 +1226,7 @@ define(function (require, exports, module) {
             result.resolve();
             return promise;
         }
-		
+
         var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
 
         if (doc && doc.isDirty && !_forceClose && (MainViewManager.isExclusiveToPane(doc.file, paneId) || _spawnedRequest)) {
@@ -1300,7 +1299,6 @@ define(function (require, exports, module) {
                     }
                 });
 			}
-			
             result.always(function () {
                 MainViewManager.focusActivePane();
             });
@@ -1512,7 +1510,7 @@ define(function (require, exports, module) {
             }
         );
     }
-    
+
     /** Show a textfield to rename whatever is currently selected in the sidebar (or current doc if nothing else selected) */
     function handleFileRename() {
         if (hotClose) {
@@ -1625,8 +1623,7 @@ define(function (require, exports, module) {
     function handleFileDelete() {
         var entry = ProjectManager.getSelectedItem(),
             thisFilePath = entry._path;
-        
-		Dialogs.showModalDialog(
+        Dialogs.showModalDialog(
             DefaultDialogs.DIALOG_ID_EXT_DELETED,
             Strings.CONFIRM_DELETE_TITLE,
             StringUtils.format(
@@ -1652,7 +1649,6 @@ define(function (require, exports, module) {
 					if (hotClose) {
                         Db.delRows(thisFilePath);
                     }
-                    
                     ProjectManager.deleteItem(entry);
                 }
             });
@@ -1852,13 +1848,13 @@ define(function (require, exports, module) {
     } else if (brackets.platform === "mac") {
         showInOS    = Strings.CMD_SHOW_IN_FINDER;
     }
-    
-    exports.doSave = doSave;
-    
+
     // Define public API
     exports.showFileOpenError = showFileOpenError;
     exports.APP_QUIT_CANCELLED = APP_QUIT_CANCELLED;
+    exports.doSave = doSave;
     
+
     // Deprecated commands
     CommandManager.register(Strings.CMD_ADD_TO_WORKING_SET,          Commands.FILE_ADD_TO_WORKING_SET,        handleFileAddToWorkingSet);
     CommandManager.register(Strings.CMD_FILE_OPEN,                   Commands.FILE_OPEN,                      handleDocumentOpen);
