@@ -106,6 +106,15 @@ define(function (require, exports, module) {
 
     var hotClose = PreferencesManager.get(HOT_CLOSE);
 
+    // Alert user of error via dialog interaction
+    function handleErrorDialog (errorMessage) {
+        Dialogs.showModalDialog(
+            DefaultDialogs.DIALOG_ID_ERROR,
+            Strings.HOT_CLOSE_TITLE,
+            errorMessage
+        );
+    };
+
     // Debounce syncing of new unsaved changes to db
     var timer = null;
     function debouncedSync(doc, delay) {
@@ -120,8 +129,8 @@ define(function (require, exports, module) {
                 result.resolve();
             };
         } catch (error) {
-            console.log(error);
-            result.reject();
+            handleErrorDialog(error);
+            result.reject(error);
         }
 
         return result.promise();
@@ -129,20 +138,27 @@ define(function (require, exports, module) {
 
     // Creates a table in current db
     function createTable (table, keyName) {
+        var result = new $.Deferred();
+        
         database.transaction(function (tx) {
-            tx.executeSql('CREATE TABLE IF NOT EXISTS ' + table + ' (id INTEGER PRIMARY KEY, sessionId UNIQUE, ' + keyName + ')', [],
-                null,
-                function (tx, error) {
-                    console.log("Error: ", error);
-                    console.log("Could not create table ", table);
+            tx.executeSql('CREATE TABLE IF NOT EXISTS ' + table + ' (id INTEGER PRIMARY KEY, sessionId UNIQUE, ' + keyName + ')',
+                [],
+                function (tx, result) {
+                    result.resolve();
+                }, function (tx, error) {
+                    handleErrorDialog(error);
+                    result.reject(error);
                 }
             );
+            
+            return result.promise();
         });
     }
 
     // Attempt creation of default tables if not present in DB already
     if (!database) {
-        console.log("Database error: Database 'change_history_db' has not been loaded!");
+        var errorMsg = "Database error: Database 'change_history_db' has not been loaded!";
+        handleErrorDialog(errorMsg);
     } else {
         for (var i = 0, len = tables.length; i < len; i++) {
             createTable(tables[i], keyNames[i]);
@@ -152,23 +168,25 @@ define(function (require, exports, module) {
     // Prints specific row data from table in db
     function printRowContentsDb(table, filePath, keyName) {
         database.transaction(function (tx) {
-            tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?', [filePath], function (tx, results) {
-                if (results.rows.length > 0) {
-                    // Decode and display data
-                    if (keyName === "str__DocTxt") {
-                        console.log(He.decode(window.RawDeflate.inflate(results.rows[0][keyName])));
-                    } else {
-                        console.log(JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0][keyName]))));
+            tx.executeSql('SELECT * FROM ' + table + ' WHERE sessionId = ?',
+                [filePath], 
+                function (tx, results) {
+                    if (results.rows.length > 0) {
+                        // Decode and display data
+                        if (keyName === "str__DocTxt") {
+                            console.log(He.decode(window.RawDeflate.inflate(results.rows[0][keyName])));
+                        } else {
+                            console.log(JSON.parse(He.decode(window.RawDeflate.inflate(results.rows[0][keyName]))));
+                        }
                     }
+                }, function (tx, error) {
+                    handleErrorDialog(error);
                 }
-            }, function (tx, error) {
-                console.log("Error: Could not print row from table '" + table + "'");
-                console.log("Error: ", error);
-            });
+            );
         });
     }
 
-    // Select and display db contents from all tables by sessionId
+    // Select and display db contents from all tables by sessionId (sync printing)
     function printSavedContents(filePath) {
         var i;
         try {
@@ -176,7 +194,7 @@ define(function (require, exports, module) {
                 printRowContentsDb(tables[i], filePath, keyNames[i]);
             }
         } catch (error) {
-            console.log(error);
+            handleErrorDialog(error);
         }
     }
 
@@ -189,8 +207,8 @@ define(function (require, exports, module) {
                 function (tx, txResults) {
                     result.resolve();
                 }, function (tx, error) {
-                    console.log(error);
-                    result.reject();
+                    handleErrorDialog(error);
+                    result.reject(error);
                 }
             );
         });
@@ -213,8 +231,8 @@ define(function (require, exports, module) {
             }
             result.resolve();
         } catch (error) {
-            console.log(error);
-            result.reject();
+            handleErrorDialog(error);
+            result.reject(error);
         }
         
         return result.promise();
@@ -226,7 +244,7 @@ define(function (require, exports, module) {
             tx.executeSql("DROP TABLE " + table, [],
             null,
             function (tx, error) {
-                console.log(error);
+                handleErrorDialog(error);
             });
         });
     };
@@ -241,7 +259,7 @@ define(function (require, exports, module) {
             }
 
         } catch (error) {
-            console.log(error);
+            handleErrorDialog(error);
         }
     }
     
@@ -270,7 +288,8 @@ define(function (require, exports, module) {
                                     function (tx, result) {
                                         result.resolve();
                                     }, function (tx, error) {
-                                        result.reject();
+                                        handleErrorDialog(error);
+                                        result.reject(error);
                                     }
                                  );
                             });
@@ -283,9 +302,13 @@ define(function (require, exports, module) {
                             result.resolve();
                         },
                         function (tx, error) {
-                            result.reject();
+                            handleErrorDialog(error);
+                            result.reject(error);
                         });
-                } else { console.log(error); }
+                } else {  // Alert user of other error:
+                    handleErrorDialog(error); 
+                    result.reject(error);
+                }
             });
         });
         
@@ -300,10 +323,10 @@ define(function (require, exports, module) {
             updateTableRowDb(filePath, "unsaved_doc_changes", compressedDocText, "str__DocTxt")
 				.done(function () {
                     result.resolve();
-            });
-        } catch  (error) {
-            console.log(error);
-            result.reject();
+                });
+        } catch (error) {
+            handleErrorDialog(error);
+            result.reject(error);
         }
         
         return result.promise();
@@ -312,18 +335,19 @@ define(function (require, exports, module) {
     // Send/update changes in doc related metadata in db  
     var sendChangeHistory = function(cursorPos, scrollPos, historyObjStr, fullFilePath) {
         var i,
-            values = [],
-            encodedHistoryObjStr = window.RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
-            encodedCursorPos = window.RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
-            encodedScrollPos = window.RawDeflate.deflate(He.encode(JSON.stringify(scrollPos))),
-            result = new $.Deferred();
+            values                      = [],
+            encodedHistoryObjStr        = window.RawDeflate.deflate(He.encode(JSON.stringify(historyObjStr))),
+            encodedCursorPos            = window.RawDeflate.deflate(He.encode(JSON.stringify(cursorPos))),
+            encodedScrollPos            = window.RawDeflate.deflate(He.encode(JSON.stringify(scrollPos))),
+            result                      = new $.Deferred();
 
         values.push(encodedCursorPos);
         values.push(encodedScrollPos);
         values.push(encodedHistoryObjStr);
 
         if (!database) {
-            console.log("Database error! No database loaded!");
+            var errorMsg = "Database error! No database loaded!";
+            handleErrorDialog(errorMsg);
         } else {
             try {
                 for (i = 0; i < 3; i++) {
@@ -335,8 +359,8 @@ define(function (require, exports, module) {
                     }
                 }
             } catch (error) {
-                console.log("Database error: ", error);
-                result.reject();
+                handleErrorDialog("Database error: " + error);
+                result.reject(error);
             }
         }
 
@@ -353,7 +377,6 @@ define(function (require, exports, module) {
             cursorPos = that._masterEditor.getCursorPos(),
             scrollPos = that._masterEditor.getScrollPos(),
             result = new $.Deferred();
-
         try {
             sendChangeHistory(cursorPos, scrollPos, curHistoryObj, fullPathToFile)
 				.done(function () {
@@ -371,8 +394,8 @@ define(function (require, exports, module) {
                         });
                 });
         } catch (error) {
-            console.log(error);
-            result.reject();
+            handleErrorDialog(error);
+            result.reject(error);
         }
 
         return result.promise();
