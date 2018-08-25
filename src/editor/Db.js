@@ -70,6 +70,8 @@ define(function (require, exports, module) {
         DocumentManager    = require("document/DocumentManager"),
         CompressionUtils   = require("thirdparty/rawdeflate"),
         CompressionUtils   = require("thirdparty/rawinflate"),
+        Dialogs            = require("widgets/Dialogs"),
+        DefaultDialogs     = require("widgets/DefaultDialogs"),
         He                 = require("thirdparty/he");
 
     // Config settings
