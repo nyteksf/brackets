@@ -32,6 +32,7 @@ define(function (require, exports, module) {
         EventDispatcher     = require("utils/EventDispatcher"),
         DocumentManager     = require("document/DocumentManager"),
         EditorManager       = require("editor/EditorManager"),
+        PreferencesManager  = require("preferences/PreferencesManager"),
         CommandManager      = require("command/CommandManager"),
         Commands            = require("command/Commands"),
         InlineWidget        = require("editor/InlineWidget").InlineWidget,
@@ -250,7 +251,9 @@ define(function (require, exports, module) {
         this.$filename.on("click.InlineTextEditor", function () {
             CommandManager.execute(Commands.FILE_OPEN, { fullPath: doc.file.fullPath })
                 .done(function () {
+					console.log("INLINETEXTEDITOR LOADED CURPOS")
                     EditorManager.getCurrentFullEditor().setCursorPos(startLine, 0, true);
+                   
                 });
         });
 

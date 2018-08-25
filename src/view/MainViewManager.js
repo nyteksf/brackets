@@ -1388,8 +1388,6 @@ define(function (require, exports, module) {
                 _removeFileFromMRU(pane.id, file);
             });
             
-            console.log(closedList);
-            
             pane._reset();
             exports.trigger("workingSetRemoveList", closedList, pane.id);
         });

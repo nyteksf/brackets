@@ -519,10 +519,10 @@ define(function(require, exports, module) {
                         
                         var savedDocText = results.rows[0].str__DocTxt,
                             unpackedDocText = He.decode(RawDeflate.inflate(savedDocText));
-                        
+            
                         that._resetText(unpackedDocText, that);
                         
-                        Db.printContentsDb(that.document.file._path);
+                        //Db.printContentsDb(that.document.file._path);
                     } else {  
                         console.log("FROM METADATA")
                         // Use cur doc text if no unsaved changes were found in DB
@@ -1241,7 +1241,8 @@ define(function(require, exports, module) {
                             // Restore cursor position from DB if possible
                             var savedScrollPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__ScrollPos)));
                                                             
-                            that.setScrollPos(savedScrollPos.x, savedScrollPos.y);
+                            that.setScrollPos(savedScrollPos);
+							console.log("LOADED savedScrollPos FROM DB")
                         } else {
                             console.log("NOTHING FOUND: SAVEDSCROLLPOS");
                             that.setScrollPos(scrollPos.x, scrollPos.y);
@@ -1249,8 +1250,10 @@ define(function(require, exports, module) {
                             // No changes; restore clean status by forcing save
                             // NOTE: CAN I MANUALLY CHANGE DOC TO CLEAN AND MANUALLY TRIGGER A TITLE/WORKINGSET REFRESH?
                             var docToSave = DocumentManager.getOpenDocumentForPath(that.document.file._path);
-                            DocumentCommandHandlers.doSave(docToSave, true);
-                            Db.delRowsDb(that.document.file._path);
+                            DocumentCommandHandlers.doSave(docToSave, true).done(function () {
+								Db.delRowsDb(that.document.file._path);
+								console.log("CLEAN DOC SAVED, ASSOC. ROWS DEL'D")
+							});
                         } 
                     }, function (tx, error) {
                         console.log(error);

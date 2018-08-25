@@ -19,7 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  *
- */ 
+ */
 
 /* jslint regexp: true */
 
@@ -486,7 +486,7 @@ define(function (require, exports, module) {
             silent = (commandData && commandData.silent) || false,
             paneId = (commandData && commandData.paneId) || MainViewManager.ACTIVE_PANE,
             result = new $.Deferred();
-        console.log('AAA')        
+        console.log('BBB')        
         _doOpenWithOptionalPath(fileInfo.path, silent, paneId, commandData && commandData.options)
             .done(function (file) {
                 HealthLogger.fileOpened(file._path, false, file._encoding);
@@ -495,16 +495,13 @@ define(function (require, exports, module) {
                 }
 
                 // If a line and column number were given, position the editor accordingly.
+			/*
                 if (fileInfo.line !== null) {
                     if (fileInfo.column === null || (fileInfo.column <= 0)) {
                         fileInfo.column = 1;
                     }
-                    
-                    // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
-                    //EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                    //                                                fileInfo.column - 1,
-                    //                                                true);
                 }
+			*/
                 
                 if (!hotClose) {
                     // If a line and column number were given, position the editor accordingly.
@@ -550,7 +547,7 @@ define(function (require, exports, module) {
 
     function handleDocumentOpen(commandData) {
         var result = new $.Deferred();
-        console.log('BBB')
+        console.log('AAA')
         
         handleFileOpen(commandData)
             .done(function (file) {
@@ -559,13 +556,76 @@ define(function (require, exports, module) {
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
                 var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
-                result.resolve(doc);
-            console.log("CCC");
+                
+                console.log("CCC")
+				
+                /*
+                Db.database.transaction(function (tx) {
+                    tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?',     [doc.file._path],
+                        function (tx, results) {
+                            if (results.rows.length > 0) {
+                                console.log("FROM DB")
+
+                                var savedDocText = results.rows[0].str__DocTxt,
+                                    unpackedDocText = He.decode(RawDeflate.inflate(savedDocText));
+
+                                doc._associatedFullEditors["0"]._resetText(unpackedDocText, doc._associatedFullEditors["0"]);
+
+                                // Restore saved undo/redo history from DB
+                                tx.executeSql('SELECT * FROM undo_redo_history WHERE sessionId = ?',
+                                    [doc.file._path],
+                                    function(tx, results) {
+                                        if (results.rows.length > 0) {
+                                            var savedDocHistory = JSON.parse(He.decode(RawDeflate.inflate(results.rows["0"].str__DocHistory)));
+
+                                            console.log(savedDocHistory)
+                                            doc._masterEditor._codeMirror.setHistory(savedDocHistory);
+                                        
+                                            tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',
+                                                [doc.file._path],
+                                                function(tx, results) {
+                                                    if (results.rows.length > 0) {
+                                                        // Restore cursor position from DB if possible
+                                                        var savedCursorPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__CursorPos)));
+
+                                                        console.log(savedCursorPos);
+                                                        doc._masterEditor.setCursorPos(savedCursorPos);
+                                                        
+                                                        tx.executeSql('SELECT * FROM scrollpos_coords WHERE sessionId = ?',
+                                                            [doc.file._path],
+                                                            function(tx, results) {
+                                                                if (results.rows.length > 0) {
+                                                                    // Restore cursor position from DB if possible
+                                                                    var savedScrollPos = JSON.parse(He.decode(RawDeflate.inflate(results.rows[0].int__ScrollPos)));
+                                                                    doc._masterEditor.setScrollPos(savedScrollPos.x, savedScrollPos.y);
+                                                                }
+                                                                result.resolve(doc);
+                                                            }, function (tx, error) {
+                                                                console.log(error);
+                                                                result.reject();
+                                                            }
+                                                        );
+                                                    }
+                                                }, function (tx, error) {
+                                                    console.log(error);
+                                                }
+                                            );                        
+										}
+                                    }, function (tx, error) {
+                                        console.log(error);
+                                    }
+                                );
+                            } else {  
+                                console.log("NOOP -- LOADED FROM METADATA")
+                            }
+                        }
+                    );     
+                }); */
             })
             .fail(function () {
                 result.reject();
             });
-        
+  
         return result.promise();
     }
 
@@ -1240,7 +1300,6 @@ define(function (require, exports, module) {
             
             if (hotClose) {
                 console.log("EXECUTING INSPECTION OF DIRTY DOC: ")
-                console.log(doc);
                 
                 // Gather data from dirty doc
                 var cursorPos = RawDeflate.deflate(He.encode(JSON.stringify(doc._masterEditor.getCursorPos()))),
@@ -1388,7 +1447,7 @@ define(function (require, exports, module) {
                         .fail(function (error) {
                             console.log(error);
                         });
-                    
+
                     return storePromise;
                 } else {
                     // workingset entry that was never actually opened - ignore
@@ -1402,7 +1461,7 @@ define(function (require, exports, module) {
             return filesAfterSave;
         });
     }
-    
+
     /**
      * @param {!Array.<File>} list - the list of files to close
      * @param {boolean} promptOnly - true to just prompt for saving documents with actually closing them.
@@ -1412,52 +1471,17 @@ define(function (require, exports, module) {
     function _closeList(list, promptOnly, _forceClose) {
         var result      = new $.Deferred(),
             unsavedDocs = [];
-        
+
         list.forEach(function (file) {
             var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
             if (doc && doc.isDirty) {
                 unsavedDocs.push(doc);
             }
         });
-        
+
         // Stash DocText of all dirty docs in db before attempt closing all
         if (hotClose) {
-            console.log("TRYING TO STORE DOC DATA BEFORE CLOSE ALL")
-            
-            if (unsavedDocs.length === 0 || _forceClose) {
-                // NOOP
-                result.resolve();
-            } 
-            else if (unsavedDocs.length === 1) {
-                // Gather data from open doc
-                var cursorPos = RawDeflate.deflate(He.encode(JSON.stringify(unsavedDocs[0]._masterEditor.getCursorPos()))),
-                    scrollPos = RawDeflate.deflate(He.encode(JSON.stringify(unsavedDocs[0]._masterEditor.getScrollPos()))),
-                    curHistoryObjStr = RawDeflate.deflate(He.encode(JSON.stringify(unsavedDocs[0]._masterEditor._codeMirror.getHistory()))),
-                    compressedDocText = RawDeflate.deflate(He.encode(unsavedDocs[0]._masterEditor._codeMirror.getValue())),
-                    fullFilePath = unsavedDocs[0].file._path;
-                
-                // Launch silent db set/update event
-                Db.sendChangeHistoryDb(cursorPos, scrollPos, curHistoryObjStr, fullFilePath)
-                    .then(function () {
-                        Db.sendDocTextDb(fullFilePath, compressedDocText);
-                    })
-                    .then(function () {
-                        var docPaneId   = unsavedDocs[0]._masterEditor._paneId,
-                            unsavedFile = unsavedDocs[0].file;
-                    
-                        MainViewManager._close(docPaneId, unsavedFile);
-                        result.resolve();
-                });
-            } 
-            else if (unsavedDocs.length > 1) {
-                // Save all unsaved files, then if that succeeds, close all
-                _storeFileTextList(unsavedDocs).done(function () {
-                    // List of files after save may be different, if any were Untitled
-                    result.resolve();
-                }).fail(function () {
-                    result.reject();
-                });
-            }
+	    result.resolve();
         } else {
             // Normal file save/close logic
             if (unsavedDocs.length === 0 || _forceClose) {
