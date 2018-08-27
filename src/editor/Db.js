@@ -46,19 +46,19 @@
   * ----------------------------------------------------------------- *
   *                                                                   *
   *     The db module interacts with the editor while shadowing its   *
-  *		assigned codemirror for a given doc in order to preserve any  *
-  *		unsaved changes. This module features database config	 	  *
-  *		info, and methods for db instantiation and CRUD. There are	  *
-  *		four tables created in total amounting to 500MB in total. 	  *
-  *		These tables are each respectively named "cursorpos_coords",  *
-  *		"scrollpos_coords", "undo_redo_history" and 				  *
-  *		"unsaved_doc_changes". In order, these contain the last	 	  *
-  *		known document information as related to cursor	  			  *
-  *		and scroll positioning, as well as the undo/redo history 	  *
-  *		and document text. Change data is stored by full filepath 	  *
-  *		which is used as the sessionId. Keyup events in a focused 	  *
-  *		editor are what trigger syncing of all current history 		  *
-  *		data to the database. 									      *
+  *	assigned codemirror for a given doc in order to preserve any  *
+  *	unsaved changes. This module features database config	      *
+  *	info, and methods for db instantiation and CRUD. There are    *
+  *	four tables created in total amounting to 500MB in total.     *
+  *	These tables are each respectively named "cursorpos_coords",  *
+  *	"scrollpos_coords", "undo_redo_history" and 		      *
+  *	"unsaved_doc_changes". In order, these contain the last	      *
+  *	known document information as related to cursor	  	      *
+  *	and scroll positioning, as well as the undo/redo history      *
+  *	and document text. Change data is stored by full filepath     *
+  *	which is used as the sessionId. Keyup events in a focused     *
+  *	editor are what trigger syncing of all current history        *
+  *	data to the database. 					      *
   *                                                                   *
   \*******************************************************************/
 define(function (require, exports, module) {
@@ -141,18 +141,18 @@ define(function (require, exports, module) {
     // Creates a table in current db
     function createTable (table, keyName) {
         var result = new $.Deferred();
-        
+
         database.transaction(function (tx) {
             tx.executeSql('CREATE TABLE IF NOT EXISTS ' + table + ' (id INTEGER PRIMARY KEY, sessionId UNIQUE, ' + keyName + ')',
                 [],
-                function (tx, result) {
+                function (tx, results) {
                     result.resolve();
                 }, function (tx, error) {
                     handleErrorDialog(error);
                     result.reject(error);
                 }
             );
-            
+
             return result.promise();
         });
     }
@@ -206,7 +206,7 @@ define(function (require, exports, module) {
         database.transaction(function (tx) {
             tx.executeSql('DELETE FROM ' + table + ' WHERE sessionId="' + filePath + '"',
                 [],
-                function (tx, txResults) {
+                function (tx, results) {
                     result.resolve();
                 }, function (tx, error) {
                     handleErrorDialog(error);
@@ -264,7 +264,7 @@ define(function (require, exports, module) {
             handleErrorDialog(error);
         }
     }
-    
+
     // Updates specific row in a table in db
     function updateTableRowDb(filePath, table, value, keyName) {
         var result = new $.Deferred();
@@ -280,14 +280,14 @@ define(function (require, exports, module) {
                 function (tx, results) {
                     result.resolve();
                 }, function (tx, error) {
-                    // Error code #4 indicates storage capacity reached for currently used table 
+                    // Error code #4 indicates storage capacity reached for currently used table
                     // Make some room for new data, then try again when done
                     if (error.code === 4) {
                         delRows(null, true)
                             .done(function () {
                                  tx.executeSql('INSERT INTO ' + table + ' (sessionId, "' + keyName + '") VALUES ("' + filePath + '", ?)',
                                     [value],
-                                    function (tx, result) {
+                                    function (tx, results) {
                                         result.resolve();
                                     }, function (tx, error) {
                                         handleErrorDialog(error);
@@ -308,19 +308,19 @@ define(function (require, exports, module) {
                             result.reject(error);
                         });
                 } else {  // Alert user of other error:
-                    handleErrorDialog(error); 
+                    handleErrorDialog(error);
                     result.reject(error);
                 }
             });
         });
-        
+
         return result.promise();
     }
 
 	// Send/update changes to document text in db
     function sendDocText (docTextToSync, filePath) {
         var compressedDocText = window.RawDeflate.deflate(He.encode(docTextToSync.toString())),
-            result = new $.Deferred();		
+            result = new $.Deferred();
         try {
             updateTableRowDb(filePath, "unsaved_doc_changes", compressedDocText, "str__DocTxt")
 				.done(function () {
@@ -330,11 +330,11 @@ define(function (require, exports, module) {
             handleErrorDialog(error);
             result.reject(error);
         }
-        
+
         return result.promise();
     };
-    
-    // Send/update changes in doc related metadata in db  
+
+    // Send/update changes in doc related metadata in db
     var sendChangeHistory = function(cursorPos, scrollPos, historyObjStr, fullFilePath) {
         var i,
             values                      = [],
@@ -391,7 +391,7 @@ define(function (require, exports, module) {
                                 // Remove doc change history data
                                 delRows(fullPathToFile);
                             }
-                        
+
                             result.resolve();
                         });
                 });
