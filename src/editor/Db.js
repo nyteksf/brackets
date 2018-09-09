@@ -122,7 +122,6 @@ define(function (require, exports, module) {
     function debouncedSync(doc, delay) {
         var result = new $.Deferred();
         try {
-
             return function () {
                 clearTimeout(timer);
                 timer = setTimeout(function () {
