@@ -78,7 +78,10 @@ define(function (require, exports, module) {
         HTMLUtils          = require("language/HTMLUtils"),
         ViewUtils          = require("utils/ViewUtils"),
         MainViewManager    = require("view/MainViewManager"),
-        _                  = require("thirdparty/lodash");
+        DocumentManager    = require("document/DocumentManager"),
+        _                  = require("thirdparty/lodash"),
+        CompressionTools   = require("thirdparty/rawdeflate"),
+        He                 = require("thirdparty/he");
 
     /** Editor preferences */
 
@@ -416,7 +419,7 @@ define(function (require, exports, module) {
 
         // Create the CodeMirror instance
         // (note: CodeMirror doesn't actually require using 'new', but jslint complains without it)
-        this._codeMirror = new CodeMirror(container, {
+	    this._codeMirror = new CodeMirror(container, {
             autoCloseBrackets           : currentOptions[CLOSE_BRACKETS],
             autoCloseTags               : currentOptions[CLOSE_TAGS],
             coverGutterNextToScrollbar  : true,
@@ -440,7 +443,7 @@ define(function (require, exports, module) {
             tabSize                     : currentOptions[TAB_SIZE],
             readOnly                    : isReadOnly
         });
-
+        
         // Can't get CodeMirror's focused state without searching for
         // CodeMirror-focused. Instead, track focus via onFocus and onBlur
         // options and track state with this._focused
@@ -501,11 +504,14 @@ define(function (require, exports, module) {
                 return $(this.getRootElement());
             }
         });
+        
+        // Export current CodeMirror instance to allow history persistence on file open
+        exports.codeMirrorRef = this._codeMirror;
     }
-
+    
     EventDispatcher.makeEventDispatcher(Editor.prototype);
     EventDispatcher.markDeprecated(Editor.prototype, "keyEvent", "'keydown/press/up'");
-
+    
     Editor.prototype.markPaneId = function (paneId) {
         this._paneId = paneId;
 
@@ -720,7 +726,7 @@ define(function (require, exports, module) {
                 selectionType = "indentAtSelection";
             }
         });
-
+        
         switch (selectionType) {
         case "indentAtBeginning":
             // Case 1
@@ -731,7 +737,7 @@ define(function (require, exports, module) {
             // Case 2
             this._addIndentAtEachSelection(selections);
             break;
-
+                
         case "indentAuto":
             // Case 3
             this._autoIndentEachSelection(selections);
@@ -894,7 +900,6 @@ define(function (require, exports, module) {
                 } else {
                     cm.replaceRange(newText, change.from, change.to, change.origin);
                 }
-
             }
         });
 
@@ -902,6 +907,18 @@ define(function (require, exports, module) {
         this._updateHiddenLines();
     };
 
+    /**
+    * Preference to persist undo/redo history between Brackets sessions
+    */
+    PreferencesManager.definePreference(PERSIST_UNSAVED_CHANGES, "boolean", true, {
+        description: Strings.DESCRIPTION_PERSIST_UNSAVED_CHANGES
+    });
+    
+    var persistUnsavedChanges = PreferencesManager.get(PERSIST_UNSAVED_CHANGES),
+        PERSIST_UNSAVED_CHANGES = "persistUnsavedChanges",
+        fullPathToFile,
+        currentTextObj;
+    
     /**
      * Responds to changes in the CodeMirror editor's text, syncing the changes to the Document.
      * There are several cases where we want to ignore a CodeMirror change:
@@ -918,7 +935,7 @@ define(function (require, exports, module) {
 
         // Secondary editor: force creation of "master" editor backing the model, if doesn't exist yet
         this.document._ensureMasterEditor();
-
+        
         if (this.document._masterEditor !== this) {
             // Secondary editor:
             // we're not the ground truth; if we got here, this was a real editor change (not a
@@ -927,13 +944,85 @@ define(function (require, exports, module) {
             // FUTURE: Technically we should add a replaceRange() method to Document and go through
             // that instead of talking to its master editor directly. It's not clear yet exactly
             // what the right Document API would be, though.
-            this._duringSync = true;
-            this.document._masterEditor._applyChanges(changeList);
-            this._duringSync = false;
+            if (!persistUnsavedChanges) {
+                this._duringSync = true;
+                this.document._masterEditor._applyChanges(changeList);
+                this._duringSync = false;
 
-            // Update which lines are hidden inside our editor, since we're not going to go through
-            // _applyChanges() in our own editor.
-            this._updateHiddenLines();
+                // Update which lines are hidden inside our editor, since we're not going to go through
+                // _applyChanges() in our own editor.
+                this._updateHiddenLines();    
+            } else {
+                /**
+                 * Persistent Undo History:
+                 * If pref set, will update Undo/Redo History in localStorage with each CodeMirror sync
+                 */
+                fullPathToFile = this.document.file.fullPath,
+                currentTextObj = JSON.stringify(this._codeMirror.getHistory());
+                var currentTxt = this._codeMirror.getValue(),
+                scrollPos      = this.getScrollPos(),
+                cursorPos      = this.getCursorPos(),
+                docTxtSpecialCharsEncoded = He.encode(currentTxt),
+                curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
+                codeMirrorRefs = [[cursorPos.line, cursorPos.ch, cursorPos.sticky], [scrollPos.x, scrollPos.y], [currentTextObj], [curTxtDeflated], fullPathToFile],
+                codeMirrorRefsToJSON = JSON.stringify(codeMirrorRefs),
+                unsavedDocs = [];  
+
+                // Ensure if localStorage full, empty before proceeding to write
+                try {
+                    window.localStorage.setItem("loadRefs__" + fullPathToFile, codeMirrorRefsToJSON);
+                } catch (err) {
+                /**
+                 * Persistent Undo History:
+                 * If pref set, will update Undo/Redo History in localStorage with each CodeMirror sync
+                 */
+                fullPathToFile = this.document.file.fullPath,
+                currentTextObj = this._codeMirror.getHistory();
+                var currentTxt = this._codeMirror.getValue(),
+                scrollPos      = this.getScrollPos(),
+                cursorPos      = this.getCursorPos(),
+                docTxtSpecialCharsEncoded = He.encode(currentTxt),
+                curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
+                codeMirrorRefs = [[cursorPos.line, cursorPos.ch, cursorPos.sticky], [scrollPos],[currentTextObj], [curTxtDeflated], fullPathToFile],
+                codeMirrorRefsToJSON = JSON.stringify(codeMirrorRefs);  
+
+                // MOVE THIS INTO ITS OWN FUNCTION (D.R.Y.):
+                // BUILD CODE TO SAVE ALL CODEMIRRORREFS TO LOCALSTORAGE WHEN MEM FULL:
+                var listOfFiles = (MainViewManager.getAllOpenFiles());
+            
+                unsavedDocs = listOfFiles.map(function (file) {
+                    var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
+                    if (doc && doc.isDirty) {
+                        doc;
+                    }
+                });
+
+                var fileRefsToJSON = unsavedDocs.map(function (file) {
+                    var thisCurrentFile    = file,
+                        thisFileFullPath   = thisCurrentFile.file._path,
+                        thisCurrentTxtObj  = file._masterEditor._codeMirror.getValue(),
+                        thisCurrentHistory = JSON.stringify(file._masterEditor._codeMirror.getHistory()),
+                        thisCursorPos      = file._masterEditor.getCursorPos(),
+                        thisScrollPos      = file._masterEditor.getScrollPos(),
+                        docTxtSpecialCharsEncoded = He.encode(thisCurrentTxtObj),
+                        deflatedCurTxt     = RawDeflate.deflate(docTxtSpecialCharsEncoded);
+
+                        var refs = [[thisCursorPos.line, thisCursorPos.ch, thisCursorPos.sticky], [thisScrollPos], [thisCurrentHistory], [deflatedCurTxt], [thisFileFullPath]], refsToJSON = JSON.stringify(refs);
+                        
+                        return refsToJSON;
+                    });
+
+                    window.localStorage.clear();  // Making more room....
+
+                    fileRefsToJSON.forEach(function (fileRefs) {  // Then restore unsaved changes to localStorage
+                        var parsedJSONRefs = JSON.parse(fileRefs),
+                        filePathFull   = parsedJSONRefs.pop().toString(),
+                        fileRefs       = JSON.stringify(parsedJSONRefs);
+                    
+                        window.localStorage.setItem("loadRefs__" + filePathFull, fileRefs);   // Adding back one file per interation
+                    });
+                }
+            }
         }
         // Else, Master editor:
         // we're the ground truth; nothing else to do, since Document listens directly to us
@@ -946,6 +1035,64 @@ define(function (require, exports, module) {
         // Editor dispatches a change event before this event is dispatched, because
         // CodeHintManager needs to hook in here when other things are already done.
         this.trigger("editorChange", this, changeList);
+        
+        /**
+         * Persistent Undo History:
+         * If pref set, will update Undo/Redo History in localStorage with each CodeMirror sync
+         */
+        if (persistUnsavedChanges) {
+            fullPathToFile = this.document.file.fullPath,
+            currentTextObj = JSON.stringify(this._codeMirror.getHistory());
+            var currentTxt = this._codeMirror.getValue(),
+            scrollPos      = this.getScrollPos(),
+            cursorPos      = this.getCursorPos(),
+            docTxtSpecialCharsEncoded = He.encode(currentTxt),
+            curTxtDeflated = RawDeflate.deflate(docTxtSpecialCharsEncoded),
+            codeMirrorRefs = [[cursorPos.line, cursorPos.ch, cursorPos.sticky], [scrollPos], [currentTextObj], [curTxtDeflated], fullPathToFile],
+            codeMirrorRefsToJSON = JSON.stringify(codeMirrorRefs),
+            unsavedDocs = [];
+            
+            // Ensure if localStorage full, empty before proceeding to write
+            try {
+                window.localStorage.setItem("loadRefs__" + fullPathToFile, codeMirrorRefsToJSON);
+            } catch (err) {
+                // MOVE THIS INTO ITS OWN FUNCTION (D.R.Y.):
+                var listOfFiles = (MainViewManager.getAllOpenFiles());
+            
+                unsavedDocs = listOfFiles.map(function (file) {
+                    var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
+                    if (doc && doc.isDirty) {
+                        return doc;
+                    }
+                });
+                
+                var fileRefsToJSON = unsavedDocs.map(function (file) {
+                    var thisCurrentFile    = file,
+                        thisFileFullPath   = thisCurrentFile.file._path,
+                        thisCurrentTxtObj  = file._masterEditor._codeMirror.getValue(),
+                        thisCurrentHistory = JSON.stringify(file._masterEditor._codeMirror.getHistory()),
+                        thisCursorPos      = file._masterEditor.getCursorPos(),
+                        thisScrollPos      = file._masterEditor.getScrollPos(),
+                        docTxtSpecialCharsEncoded = He.encode(thisCurrentTxtObj),
+                        deflatedCurTxt     = RawDeflate.deflate(docTxtSpecialCharsEncoded);
+
+                    var refs = [[thisCursorPos.line, thisCursorPos.ch, thisCursorPos.sticky], [thisScrollPos], [thisCurrentHistory], [deflatedCurTxt], [thisFileFullPath]],
+                        refsToJSON = JSON.stringify(refs);
+                    
+                    return refsToJSON; 
+                });
+                
+                window.localStorage.clear();
+
+                fileRefsToJSON.forEach(function (fileRefs) {
+                    var parsedJSONRefs = JSON.parse(fileRefs),
+                        filePathFull   = parsedJSONRefs.pop().toString(),
+                        fileRefs       = JSON.stringify(parsedJSONRefs);
+                    
+                    window.localStorage.setItem("loadRefs__" + filePathFull, fileRefs); 
+                });
+            }
+        }
     };
 
     /**
@@ -1078,7 +1225,7 @@ define(function (require, exports, module) {
      * Semi-private: only Document should call this.
      * @param {!string} text
      */
-    Editor.prototype._resetText = function (text) {
+    Editor.prototype._resetText = function (text) {  // nyteksf
         var currentText = this._codeMirror.getValue();
 
         // compare with ignoring line-endings, issue #11826
@@ -2777,7 +2924,7 @@ define(function (require, exports, module) {
             });
         });
     });
-
+    
     // Define public API
     exports.Editor                  = Editor;
     exports.BOUNDARY_CHECK_NORMAL   = BOUNDARY_CHECK_NORMAL;
