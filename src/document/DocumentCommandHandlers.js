@@ -58,10 +58,15 @@ define(function (require, exports, module) {
         StatusBar           = require("widgets/StatusBar"),
         WorkspaceManager    = require("view/WorkspaceManager"),
         LanguageManager     = require("language/LanguageManager"),
+<<<<<<< HEAD
         Db                  = require("editor/Db"),
         _                   = require("thirdparty/lodash"),
         CompressionUtils    = require("thirdparty/rawinflate"),
         CompressionUtils    = require("thirdparty/rawdeflate"),
+=======
+        _                   = require("thirdparty/lodash"),
+        CompressionTools    = require("thirdparty/rawinflate"),
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
         He                  = require("thirdparty/he");
 
     /**
@@ -471,6 +476,18 @@ define(function (require, exports, module) {
      * fullPath: is in the form "path[:lineNumber[:columnNumber]]"
      * lineNumber and columnNumber are 1-origin: lines and columns are 1-based
      */
+    
+    /**
+     * Preference to persist undo history between sessions
+     */
+    
+    var PERSIST_UNSAVED_CHANGES = "persistUnsavedChanges";
+
+    PreferencesManager.definePreference(PERSIST_UNSAVED_CHANGES, "boolean", true, {
+        description: Strings.DESCRIPTION_PERSIST_UNSAVED_CHANGES
+    });
+
+    var persistUnsavedChanges = PreferencesManager.get(PERSIST_UNSAVED_CHANGES);
 
     /**
      * Opens the given file and makes it the current file. Does NOT add it to the workingset.
@@ -493,16 +510,30 @@ define(function (require, exports, module) {
                     MainViewManager.setActivePaneId(paneId);
                 }
 
-                // If a line and column number were given, position the editor accordingly.
-                if (fileInfo.line !== null) {
-                    if (fileInfo.column === null || (fileInfo.column <= 0)) {
-                        fileInfo.column = 1;
+                if (!persistUnsavedChanges) { // ...load file as normal.
+                    // If a line and column number were given, position the editor accordingly.
+                    if (fileInfo.line !== null) {
+                        if (fileInfo.column === null || (fileInfo.column <= 0)) {
+                            fileInfo.column = 1;
+                        }
+                    
+                        // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
+                        EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
+                                                                        fileInfo.column - 1,
+                                                                        true);
+                    }   
+                } else {   // Fall back on file to get last cursorPos if changes to doc were saved
+                    if (!window.localStorage.getItem("loadRefs__" + file._path)) {
+                        if (fileInfo.line !== null) {
+                            if (fileInfo.column === null || (fileInfo.column <= 0)) {
+                                fileInfo.column = 1;
+                            }
+                    
+                            EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
+                                                                        fileInfo.column - 1,
+                                                                        true);
+                        }
                     }
-
-                    // setCursorPos expects line/column numbers as 0-origin, so we subtract 1
-                    EditorManager.getCurrentFullEditor().setCursorPos(fileInfo.line - 1,
-                                                                      fileInfo.column - 1,
-                                                                      true);
                 }
 
                 result.resolve(file);
@@ -541,8 +572,54 @@ define(function (require, exports, module) {
                 //  then we need to resolve that to a document.
                 //  getOpenDocumentForPath will return null if there isn't a
                 //  supporting document for that file (e.g. an image)
-                var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
+                var pathToFile = file.fullPath,
+                    doc = DocumentManager.getOpenDocumentForPath(pathToFile),
+                    refsToLoad,
+                    parsedRefsToLoad,
+                    parsedHistory,
+                    docTxtToInflate,
+                    docTxtDecodedChars,
+                    cursorPosX,
+                    cursorPosY;
+                    
+                if (persistUnsavedChanges) {  // Retrieve file info
+                    refsToLoad = window.localStorage.getItem("loadRefs__" + pathToFile);
+                        
+                    if (refsToLoad) {
+                        parsedRefsToLoad   = JSON.parse(refsToLoad),         
+                        parsedHistory      = JSON.parse(parsedRefsToLoad[2]),
+                        docTxtToInflate    = parsedRefsToLoad[3].toString();
+                        docTxtDecodedChars = He.decode(RawDeflate.inflate(docTxtToInflate)),
+                        cursorPosX         = parsedRefsToLoad[0][0],
+                        cursorPosY         = parsedRefsToLoad[0][1];   
+                        
+                        // Load record of prior text into master editor
+                        doc._masterEditor._codeMirror.setValue(docTxtDecodedChars);
+                    }
+                }
                 result.resolve(doc);
+            
+                /**
+                 * If pref set to true, load current files saved undo/redo history into CodeMirror
+                 */
+                if (persistUnsavedChanges && doc !== null) {  // Make sure doc lives within file
+                    // Check if prior history exists in localStorage before attempting to load
+                    if (refsToLoad) {
+                        // Load stashed prior history obj back into memory
+                        Editor.codeMirrorRef.setHistory(parsedHistory);   
+                        
+                        // Move cursor into the recorded prior position, and center screen
+                        EditorManager.getCurrentFullEditor().setCursorPos(cursorPosX,
+                                                                      cursorPosY,
+                                                                      true);
+<<<<<<< HEAD
+=======
+
+                        // Handle case where brackets crashes again before next sync occurs
+                        window.localStorage.setItem("loadRefs__" + fileHash, refsToLoad);
+>>>>>>> cb927b492... Make persistent changes mode skip 'file save' dialog on close
+                    }
+                }
             })
             .fail(function (err) {
                 result.reject(err);
@@ -1056,6 +1133,14 @@ define(function (require, exports, module) {
             doc = (commandData && commandData.doc) || activeDoc,
             settings;
 
+	// If pref set to true, attempt reload of prior undo/redo history
+        var persistUnsavedChanges = PreferencesManager.get(PERSIST_UNSAVED_CHANGES),
+            pathToCurFile = doc.file._path;
+
+        if (persistUnsavedChanges) {
+            window.localStorage.removeItem("loadRefs__" + pathToCurFile);
+        }
+
         if (doc && !doc.isSaving) {
             if (hotClose) {
                 // First save file, then wipe any associated history data
@@ -1230,6 +1315,7 @@ define(function (require, exports, module) {
         var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
 
         if (doc && doc.isDirty && !_forceClose && (MainViewManager.isExclusiveToPane(doc.file, paneId) || _spawnedRequest)) {
+<<<<<<< HEAD
             if (hotClose) {
                 doClose(file);
             } else {
@@ -1244,6 +1330,38 @@ define(function (require, exports, module) {
 						Strings.SAVE_CLOSE_MESSAGE,
 						StringUtils.breakableUrl(filename)
 					),
+=======
+            if (persistUnsavedChanges) {
+                // Don't Save file changes. User is relying on file persistence.
+                doClose(file);
+
+                // Only reload from disk if we've executed the Close for real.
+                if (promptOnly) {
+                    result.resolve();
+                } else {
+                    // Even if there are no listeners attached to the document at this point, we want
+                    // to do the revert anyway, because clients who are listening to the global documentChange
+                    // event from the Document module (rather than attaching to the document directly),
+                    // such as the Find in Files panel, should get a change event. However, in that case,
+                    // we want to ignore errors during the revert, since we don't want a failed revert
+                    // to throw a dialog if the document isn't actually open in the UI.
+                    var suppressError = !DocumentManager.getOpenDocumentForPath(file.fullPath);
+                    _doRevert(doc, suppressError)
+                        .then(result.resolve, result.reject);
+                }
+            } else {
+                // Document is dirty: prompt to save changes before closing if only the document is exclusively
+                // listed in the requested pane or this is part of a list close request
+                var filename = FileUtils.getBaseName(doc.file.fullPath);
+
+                Dialogs.showModalDialog(
+                    DefaultDialogs.DIALOG_ID_SAVE_CLOSE,
+                    Strings.SAVE_CLOSE_TITLE,
+                    StringUtils.format(
+                        Strings.SAVE_CLOSE_MESSAGE,
+                        StringUtils.breakableUrl(filename)
+                    ),
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
                     [
                         {
                             className : Dialogs.DIALOG_BTN_CLASS_LEFT,
@@ -1261,6 +1379,7 @@ define(function (require, exports, module) {
                             text      : Strings.SAVE
                         }
                     ]
+<<<<<<< HEAD
 				)
                 .done(function (id) {
                     if (id === Dialogs.DIALOG_BTN_CANCEL) {
@@ -1285,25 +1404,57 @@ define(function (require, exports, module) {
                         // Only reload from disk if we've executed the Close for real.
                         if (promptOnly) {
                             result.resolve();
+=======
+                )
+                    .done(function (id) {
+                        if (id === Dialogs.DIALOG_BTN_CANCEL) {
+                            dispatchAppQuitCancelledEvent();
+                            result.reject();
+                        } else if (id === Dialogs.DIALOG_BTN_OK) {
+                            // "Save" case: wait until we confirm save has succeeded before closing
+                            handleFileSave({doc: doc})
+                                .done(function (newFile) {
+                                    doClose(newFile);
+                                    result.resolve();
+                                })
+                                .fail(function () {
+                                    result.reject();
+                                });
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
                         } else {
-                            // Even if there are no listeners attached to the document at this point, we want
-                            // to do the revert anyway, because clients who are listening to the global documentChange
-                            // event from the Document module (rather than attaching to the document directly),
-                            // such as the Find in Files panel, should get a change event. However, in that case,
-                            // we want to ignore errors during the revert, since we don't want a failed revert
-                            // to throw a dialog if the document isn't actually open in the UI.
-                            var suppressError = !DocumentManager.getOpenDocumentForPath(file.fullPath);
-                            _doRevert(doc, suppressError)
-                                .then(result.resolve, result.reject);
+                            // "Don't Save" case: even though we're closing the main editor, other views of
+                            // the Document may remain in the UI. So we need to revert the Document to a clean
+                            // copy of whatever's on disk.
+                            doClose(file);
+
+                            // Only reload from disk if we've executed the Close for real.
+                            if (promptOnly) {
+                                result.resolve();
+                            } else {
+                                // Even if there are no listeners attached to the document at this point, we want
+                                // to do the revert anyway, because clients who are listening to the global documentChange
+                                // event from the Document module (rather than attaching to the document directly),
+                                // such as the Find in Files panel, should get a change event. However, in that case,
+                                // we want to ignore errors during the revert, since we don't want a failed revert
+                                // to throw a dialog if the document isn't actually open in the UI.
+                                var suppressError = !DocumentManager.getOpenDocumentForPath(file.fullPath);
+                                _doRevert(doc, suppressError)
+                                    .then(result.resolve, result.reject);
+                            }
                         }
-                    }
                 });
             }
             result.always(function () {
                 MainViewManager.focusActivePane();
             });
         } else {
-            // File is not open, or IS open but Document not dirty: close immediately
+            // If pref set, wipe associated change history file
+            var hashForFile = file._hash;
+            if (persistUnsavedChanges) {
+                window.localStorage.removeItem("history__" + hashForFile);
+            }
+
+            // File is not open, or IS open but Document not dirty: therefore, close immediately
             doClose(file);
             MainViewManager.focusActivePane();
             result.resolve();
@@ -1321,7 +1472,22 @@ define(function (require, exports, module) {
         var result      = new $.Deferred(),
             unsavedDocs = [];
 
+<<<<<<< HEAD
         if (hotClose) {
+=======
+        if (persistUnsavedChanges) {
+	    result.resolve();
+        } else {
+            list.forEach(function (file) {
+            var doc = DocumentManager.getOpenDocumentForPath(file.fullPath);
+            if (doc && doc.isDirty) {
+                unsavedDocs.push(doc);
+            }
+        });
+
+        if (unsavedDocs.length === 0 || _forceClose) {
+            // No unsaved changes or we want to ignore them, so we can proceed without a prompt
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
             result.resolve();
         } else {
             list.forEach(function (file) {
@@ -1345,6 +1511,7 @@ define(function (require, exports, module) {
                 }).fail(function () {
                     result.reject();
                 });
+<<<<<<< HEAD
             } else {
                 // Multiple unsaved files: show a single bulk prompt listing all files
                 var message = Strings.SAVE_CLOSE_MULTI_MESSAGE + FileUtils.makeDialogFileList(_.map(unsavedDocs, _shortTitleForDocument));
@@ -1388,6 +1555,8 @@ define(function (require, exports, module) {
                             result.resolve();
                         }
                     });
+=======
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
             }
         }
         
@@ -1524,6 +1693,12 @@ define(function (require, exports, module) {
         if (!entry) {
             // Else use current file (not selected in ProjectManager if not visible in tree or workingset)
             entry = MainViewManager.getCurrentlyViewedFile();
+            // If preference set to persistent undo/redo history
+            if (persistUnsavedChanges) {
+                // Removes history item from localStorage before rename
+                var oldFileName = MainViewManager.getCurrentlyViewedFile();
+                window.localStorage.removeItem("history__" + oldFileName._path);
+            }
         }
 
         if (entry) {
@@ -1621,7 +1796,11 @@ define(function (require, exports, module) {
     /** Delete file command handler  **/
     function handleFileDelete() {
         var entry = ProjectManager.getSelectedItem(),
+<<<<<<< HEAD
             thisFilePath = entry._path;
+=======
+            fullPathToFile = entry._path;
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
         Dialogs.showModalDialog(
             DefaultDialogs.DIALOG_ID_EXT_DELETED,
             Strings.CONFIRM_DELETE_TITLE,
@@ -1644,9 +1823,15 @@ define(function (require, exports, module) {
         )
             .done(function (id) {
                 if (id === Dialogs.DIALOG_BTN_OK) {
+<<<<<<< HEAD
                     // Wipe away any saved doc change data
                     if (hotClose) {
                         Db.delRows(thisFilePath);
+=======
+                    // Delete undo/redo history from localStorage if pref set to persist history
+                    if (persistUnsavedChanges) {
+                        window.localStorage.removeItem("loadRefs__" + fullPathToFile);
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
                     }
                     ProjectManager.deleteItem(entry);
                 }
@@ -1905,3 +2090,4 @@ define(function (require, exports, module) {
     // Reset the untitled document counter before changing projects
     ProjectManager.on("beforeProjectClose", function () { _nextUntitledIndexToUse = 1; });
 });
+

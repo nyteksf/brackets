@@ -30,7 +30,11 @@ define(function (require, exports, module) {
     exports.DIALOG_ID_ERROR             = "error-dialog";
     exports.DIALOG_ID_INFO              = "error-dialog"; // uses the same template for now--could be different in future
     exports.DIALOG_ID_SAVE_CLOSE        = "save-close-dialog";
+<<<<<<< HEAD
     exports.DIALOG_ID_STORAGE_FULL      = "save-close-dialog"; // uses the same template for now--could be different in future
+=======
+    exports.DIALOG_ID_
+>>>>>>> 5b57ec9982b060ee843d7c666b2634d982f04d77
     exports.DIALOG_ID_EXT_CHANGED       = "ext-changed-dialog";
     exports.DIALOG_ID_EXT_DELETED       = "ext-deleted-dialog";
     exports.DIALOG_ID_LIVE_DEVELOPMENT  = "live-development-error-dialog";
