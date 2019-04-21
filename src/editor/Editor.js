@@ -78,7 +78,19 @@ define(function (require, exports, module) {
         HTMLUtils          = require("language/HTMLUtils"),
         ViewUtils          = require("utils/ViewUtils"),
         MainViewManager    = require("view/MainViewManager"),
-        _                  = require("thirdparty/lodash");
+        DocumentManager = require("document/DocumentManager"),
+        FileUtils = require("file/FileUtils"),
+        StringUtils = require("utils/StringUtils"),
+        Dialogs = require("widgets/Dialogs"),
+        DefaultDialogs = require("widgets/DefaultDialogs"),
+        ProjectManager = require("project/ProjectManager"),
+        EditorManager = require("editor/EditorManager"),
+        DocumentCommandHandlers = brackets.getModule("document/DocumentCommandHandlers"),
+        _                  = require("thirdparty/lodash"),
+        Db = require("editor/Db"),
+        CompressionUtils = require("thirdparty/rawdeflate"),
+        CompressionUtils = require("thirdparty/rawinflate"),
+        He = require("thirdparty/he");
 
     /** Editor preferences */
 
@@ -148,6 +160,10 @@ define(function (require, exports, module) {
     PreferencesManager.definePreference(CLOSE_BRACKETS,     "boolean", true, {
         description: Strings.DESCRIPTION_CLOSE_BRACKETS
     });
+    
+    // Setting to persist unsaved document changes to DB automagically
+    var HOT_CLOSE = "hotClose",
+        hotClose  = PreferencesManager.get(HOT_CLOSE);
 
     // CodeMirror, html mode, set some tags do not close automatically.
     // We do not initialize "dontCloseTags" because otherwise we would overwrite the default behavior of CodeMirror.
@@ -475,12 +491,55 @@ define(function (require, exports, module) {
         // Initially populate with text. This will send a spurious change event, so need to make
         // sure this is understood as a 'sync from document' case, not a genuine edit
         this._duringSync = true;
-        this._resetText(document.getText());
+
+        var that = this,
+            docText = document.getText();
+
+        if (hotClose) {  // Load docTxt from DB here if possible
+            Db.database.transaction(function (tx, self) {
+                tx.executeSql('SELECT * FROM unsaved_doc_changes WHERE sessionId = ?',
+                [document.file._path],
+                function (tx, results) {
+                    if (results.rows.length > 0) {
+                        var savedDocTxt = results.rows[0].str__DocTxt,
+                            savedDocTextDecoded = He.decode(window.RawDeflate.inflate(savedDocTxt));
+
+                        that._resetText(savedDocTextDecoded, that);
+                    } else {  // Use cur doc text if no unsaved changes were found in DB
+                        that._resetText(docText, that);
+                        Db.delRows(document.file._path);
+                    }
+                });
+            });
+        } else {  // !hotClose
+            this._resetText(document.getText(), this);
+        }
+
         this._duringSync = false;
 
         if (range) {
             this._updateHiddenLines();
-            this.setCursorPos(range.startLine, 0);
+            if (hotClose) {  // Load last cursorPos from DB
+                Db.database.transaction(function(tx) {
+                    tx.executeSql('SELECT * FROM cursorpos_coords WHERE sessionId = ?',
+                    [document.file._path],
+                    function(tx, results) {
+                        if (results.rows.length > 0) {
+                            var cursorPosLn = JSON.stringify(results.rows[0].int__CursorPos.line),
+                                cursorPosCh =
+                            JSON.stringify(results.rows[0].int__CursorPos.ch);
+
+                            that.setCursorPos(cursorPosLn, cursorPosCh, true);
+                        } else {  // Use default functionality instead
+                            that.setCursorPos(range.startLine, 0);
+                        }
+                    }, function (tx, error) {
+                        console.log(error);
+                    });
+                });
+            } else {
+                that.setCursorPos(range.startLine, 0);
+            }
         }
 
         // Now that we're fully initialized, we can point the document back at us if needed
@@ -501,6 +560,9 @@ define(function (require, exports, module) {
                 return $(this.getRootElement());
             }
         });
+
+        // Export current CodeMirror instance to allow history persistence on file open
+        exports.codeMirrorRef = this._codeMirror;
     }
 
     EventDispatcher.makeEventDispatcher(Editor.prototype);
@@ -901,6 +963,20 @@ define(function (require, exports, module) {
         // The update above may have inserted new lines - must hide any that fall outside our range
         this._updateHiddenLines();
     };
+    
+    /**
+     * Gets short title of current document for display usage
+     */
+    function _shortTitleForDocument(doc) {
+        // If the document is untitled then return the filename, ("Untitled-n.ext");
+        // otherwise show the project-relative path if the file is inside the
+        // current project or the full absolute path if it's not in the project.
+        if (doc.isUntitled()) {
+            return doc.file._name;
+        } else {
+            return ProjectManager.makeProjectRelativeIfPossible(doc.file._path);
+        }
+    }
 
     /**
      * Responds to changes in the CodeMirror editor's text, syncing the changes to the Document.
